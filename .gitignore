@@ -1,0 +1,12 @@
+data/raw/
+*.tif
+*.gpkg
+*.gpkg-shm
+*.gpkg-wal
+data/processed/*_tool.*
+__pycache__/
+*.pyc
+.DS_Store
+.Rhistory
+
+symbology-style.db

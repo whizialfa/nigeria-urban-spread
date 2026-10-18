@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>$title$</title>
+  <link rel="stylesheet" href="print.css" />
+</head>
+<body class="brief">
+  <header class="mast">
+    <p class="kicker">Nigeria · five cities · 1990 to 2020</p>
+    <h1 class="doc-title">$title$</h1>
+$if(subtitle)$
+    <p class="doc-sub">$subtitle$</p>
+$endif$
+    <div class="byline">
+      <span class="author">$for(author)$$author$$sep$, $endfor$</span>
+      <span class="dot">·</span>
+      <span class="when">$date$</span>
+    </div>
+    <p class="adapt">Rings and zones around each city's centre, adapted from <a href="https://arxiv.org/abs/2509.16110">Peraza-Mues, Resendiz, Figueroa-Soriano, Prieto-Curiel and Ponce-Lopez (2025)</a>.</p>
+$if(links)$
+    <p class="map-link">$links$</p>
+$endif$
+  </header>
+
+  <main>
+$body$
+  </main>
+</body>
+</html>

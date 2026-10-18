@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 108">
+  <!-- White north arrow. Dark under-drawing first so it reads on OSM. -->
+  <!-- Halo copies -->
+  <g fill="none" stroke="#1a1a1a" stroke-width="4.2" stroke-linejoin="round" stroke-linecap="round">
+    <circle cx="40" cy="58" r="26"/>
+    <polygon points="40,8 47.5,58 40,51 32.5,58"/>
+    <polygon points="40,96 43.6,58 40,63 36.4,58"/>
+    <circle cx="40" cy="58" r="3.1"/>
+  </g>
+  <path d="M32.4,22.2 V8.4 h2.35 L45.4,19.1 V8.4 H47.7 V22.2 H45.35 L34.75,11.5 V22.2 Z" fill="#1a1a1a"/>
+  <!-- White drawing -->
+  <circle cx="40" cy="58" r="26" fill="none" stroke="#ffffff" stroke-width="2.3"/>
+  <polygon points="40,8 47.5,58 40,51" fill="#ededed" stroke="#ffffff" stroke-width="0.6" stroke-linejoin="round"/>
+  <polygon points="40,8 32.5,58 40,51" fill="#ffffff" stroke="#ffffff" stroke-width="0.6" stroke-linejoin="round"/>
+  <polygon points="40,96 43.6,58 40,63 36.4,58" fill="#ffffff" stroke="#ffffff" stroke-width="0.5" stroke-linejoin="round"/>
+  <circle cx="40" cy="58" r="3.1" fill="#ffffff"/>
+  <path d="M32.4,22.2 V8.4 h2.35 L45.4,19.1 V8.4 H47.7 V22.2 H45.35 L34.75,11.5 V22.2 Z" fill="#ffffff"/>
+</svg>

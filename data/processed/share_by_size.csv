@@ -1,0 +1,5 @@
+size,cities,median_change_points,fell,lost_people
+"under 100,000",13,-14.0,13,4
+"100,000 to 250,000",101,-13.9,98,8
+"250,000 to 1 million",55,-12.7,54,6
+over 1 million,14,-3.7,12,1
