@@ -1,11 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="theme-dark">
   <head>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
+    <script>
+      (() => {
+        const short = Math.min(screen.width || 0, screen.height || 0);
+        const coarse =
+          matchMedia("(pointer: coarse)").matches ||
+          matchMedia("(hover: none)").matches ||
+          (navigator.maxTouchPoints || 0) > 1;
+        const phone =
+          matchMedia("(max-width: 860px)").matches ||
+          (coarse && short > 0 && short <= 512);
+        document.documentElement.classList.toggle("is-phone", phone);
+      })();
+    </script>
     <meta name="theme-color" content="#071018" />
     <meta name="author" content="Wisdom Akpabio" />
     <title>Where the centre holds</title>
@@ -19,10 +32,19 @@
       rel="stylesheet"
       href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css"
     />
-    <link rel="stylesheet" href="./src/style.css?v=2" />
+    <link rel="stylesheet" href="./src/style.css?v=5" />
   </head>
   <body>
     <header class="topbar">
+      <button
+        type="button"
+        class="icon-btn"
+        id="menu-toggle"
+        title="Hide contents"
+        aria-label="Toggle contents panel"
+      >
+        ☰
+      </button>
       <div class="topbar-text">
         <p class="topbar-kicker">
           <a
@@ -39,17 +61,21 @@
           <span class="title-short">Centre holds</span>
         </h1>
       </div>
-      <div class="header-tools" id="header-tools">
+      <div class="header-tools">
         <label class="basemap-wrap" title="Basemap">
           <span class="sr-only">Basemap</span>
           <select id="basemap-select" aria-label="Basemap">
             <option value="gray" selected>Gray</option>
             <option value="streets">Streets</option>
+            <option value="color">Buildings 2.5D</option>
             <option value="imagery">Imagery</option>
           </select>
         </label>
-        <button type="button" id="tour-btn" title="How to read this map">?</button>
-        <button type="button" id="share-btn" title="Copy link to this chapter">Link</button>
+        <button type="button" id="story-btn" title="Story mode">Story</button>
+        <button type="button" id="tour-btn" title="How to use this map">?</button>
+        <button type="button" id="locate-btn" title="My location">Locate</button>
+        <button type="button" id="share-btn" title="Copy link to this view">Link</button>
+        <button type="button" id="theme-toggle" title="Switch appearance">Light</button>
         <a
           class="paper-link"
           href="./paper/where_the_centre_holds.pdf"
@@ -61,11 +87,105 @@
       </div>
     </header>
 
-    <div class="scrolly">
-      <div class="map-sticky" aria-hidden="true">
-        <div id="map"></div>
-        <div class="map-caption" id="map-caption"></div>
+    <aside class="panel" id="layers-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Contents</h2>
+          <p class="panel-sub">People and distance · five cities</p>
+        </div>
+        <button type="button" class="icon-btn" id="panel-close" title="Hide contents">✕</button>
       </div>
+      <div class="panel-body">
+        <label class="field">
+          City
+          <select id="city-select">
+            <option value="lagos" selected>Lagos</option>
+            <option value="kano">Kano</option>
+            <option value="ibadan">Ibadan</option>
+            <option value="kaduna">Kaduna</option>
+            <option value="onitsha">Onitsha</option>
+          </select>
+        </label>
+        <p class="blurb" id="city-blurb"></p>
+        <div class="score-grid" id="score-grid"></div>
+
+        <label class="field">
+          Find a place
+          <input id="place-search" type="search" placeholder="Mapo Hill, Ikeja, Sabon Gari…" autocomplete="off" />
+        </label>
+        <div id="search-results" class="search-results" hidden role="listbox"></div>
+
+        <label class="field mobile-basemap">
+          Basemap
+          <select id="basemap-select-mobile">
+            <option value="gray" selected>Gray</option>
+            <option value="streets">Streets</option>
+            <option value="color">Buildings 2.5D</option>
+            <option value="imagery">Imagery</option>
+          </select>
+        </label>
+
+        <label class="field">
+          Colour
+          <select id="theme-select">
+            <option value="zones" selected>Remoteness zones</option>
+            <option value="share">Central share 2020</option>
+            <option value="change">People change 1990–2020</option>
+          </select>
+        </label>
+
+        <div class="block">
+          <h3>Bookmarks</h3>
+          <div class="bookmark-list" id="bookmark-list"></div>
+        </div>
+
+        <div class="block">
+          <h3>Layers</h3>
+          <label class="check"><input type="checkbox" id="lyr-zones" checked /> Zone fills</label>
+          <label class="check"><input type="checkbox" id="lyr-rings" checked /> Zone rings</label>
+          <label class="check"><input type="checkbox" id="lyr-lgas" checked /> Local government areas</label>
+          <label class="check"><input type="checkbox" id="lyr-places" checked /> Place names</label>
+          <label class="check"><input type="checkbox" id="lyr-centres" checked /> Founding centres</label>
+          <label class="check"><input type="checkbox" id="lyr-outline" checked /> City outline</label>
+        </div>
+
+        <div class="block">
+          <h3>Legend</h3>
+          <div class="legend" id="legend"></div>
+        </div>
+
+        <details class="docs">
+          <summary>How to read this</summary>
+          <p>
+            Colour shows remoteness zones (central → peri-urban), the 2020 central share, or how many people each zone gained. φ is how far the typical resident moved out versus a national fit for a city that grew as much.
+          </p>
+          <p>
+            Search a place, use bookmarks, or Locate to open the nearest study city. Story mode scrolls the argument; Contents stays for exploration.
+          </p>
+          <p>
+            <a href="./paper/where_the_centre_holds.pdf" target="_blank" rel="noopener">Download the academic paper (PDF)</a>
+          </p>
+          <p>Map by Wisdom Akpabio. People from GHS-POP. Outlines from geoBoundaries LGAs.</p>
+        </details>
+        <details class="docs">
+          <summary>Glossary</summary>
+          <dl class="glossary">
+            <dt>Remoteness r</dt>
+            <dd>1000 · distance (km) / √(2020 population). Central under 3, intermediate 3–5, distant 5–9.3, peri-urban beyond.</dd>
+            <dt>Central share</dt>
+            <dd>Share of the city’s people living in the central zone.</dd>
+            <dt>φ (spread factor)</dt>
+            <dd>How much farther from the centre the typical resident sat in 2020 versus 1990. Below the national fit means the city spread less than expected for its growth.</dd>
+          </dl>
+        </details>
+      </div>
+    </aside>
+
+    <div id="map" role="application" aria-label="Where the centre holds map"></div>
+    <button type="button" class="layers-fab" id="layers-fab" title="Open contents">Contents</button>
+    <div class="map-caption" id="map-caption"></div>
+
+    <div class="scrolly" id="scrolly" hidden>
       <article class="chapters" id="chapters"></article>
     </div>
 
@@ -83,6 +203,6 @@
     </div>
 
     <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
-    <script type="module" src="./src/main.js?v=2"></script>
+    <script type="module" src="./src/main.js?v=5"></script>
   </body>
 </html>

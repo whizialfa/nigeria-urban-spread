@@ -1,0 +1,167 @@
+{
+  "cities": {
+    "lagos": {
+      "name": "Lagos",
+      "people_1990": 5816344.0,
+      "people_2020": 11308857.0,
+      "central_share_1990": 0.258058570427571,
+      "central_share_2020": 0.2555573021012266,
+      "phi": 1.0096370942474766,
+      "phi_fit": 1.1954097222957991,
+      "centre": "Iga Idunganran, Lagos Island",
+      "view": {
+        "center": [
+          3.45,
+          6.52
+        ],
+        "zoom": 9.4,
+        "pitch": 35,
+        "bearing": -18
+      }
+    },
+    "kano": {
+      "name": "Kano",
+      "people_1990": 2880560.0,
+      "people_2020": 6223623.0,
+      "central_share_1990": 0.5533113627825508,
+      "central_share_2020": 0.4961802850361924,
+      "phi": 1.0457358971306048,
+      "phi_fit": 1.192067334602337,
+      "centre": "Gidan Rumfa, the Emir's palace",
+      "view": {
+        "center": [
+          8.52,
+          11.98
+        ],
+        "zoom": 9.8,
+        "pitch": 40,
+        "bearing": 12
+      }
+    },
+    "ibadan": {
+      "name": "Ibadan",
+      "people_1990": 1677189.0,
+      "people_2020": 3690516.0,
+      "central_share_1990": 0.4954451488095883,
+      "central_share_2020": 0.4504893482560784,
+      "phi": 1.0807703327536595,
+      "phi_fit": 1.1914889046791683,
+      "centre": "Mapo Hill",
+      "view": {
+        "center": [
+          3.9,
+          7.4
+        ],
+        "zoom": 9.6,
+        "pitch": 32,
+        "bearing": -8
+      }
+    },
+    "kaduna": {
+      "name": "Kaduna",
+      "people_1990": 1075987.0,
+      "people_2020": 2094502.0,
+      "central_share_1990": 0.2762190911613284,
+      "central_share_2020": 0.2242236035516011,
+      "phi": 1.0190852638049863,
+      "phi_fit": 1.19537280628835,
+      "centre": "Lugard Hall, in the 1913 government district",
+      "view": {
+        "center": [
+          7.43,
+          10.52
+        ],
+        "zoom": 9.3,
+        "pitch": 38,
+        "bearing": 20
+      }
+    },
+    "onitsha": {
+      "name": "Onitsha",
+      "people_1990": 893515.0,
+      "people_2020": 2046168.0,
+      "central_share_1990": 0.2137346153688971,
+      "central_share_2020": 0.2386318852227635,
+      "phi": 0.9542291591984362,
+      "phi_fit": 1.1902268692239983,
+      "centre": "Ime-Obi Ogboza, the old palace ground of the Obi of Onitsha",
+      "view": {
+        "center": [
+          6.79,
+          6.05
+        ],
+        "zoom": 10.2,
+        "pitch": 42,
+        "bearing": -22
+      }
+    }
+  },
+  "bookmarks": [
+    {
+      "id": "nigeria",
+      "name": "Nigeria overview",
+      "center": [
+        7.2,
+        8.8
+      ],
+      "zoom": 5.4,
+      "pitch": 0,
+      "bearing": 0
+    },
+    {
+      "id": "lagos",
+      "name": "Lagos",
+      "center": [
+        3.45,
+        6.52
+      ],
+      "zoom": 9.4,
+      "pitch": 35,
+      "bearing": -18
+    },
+    {
+      "id": "kano",
+      "name": "Kano",
+      "center": [
+        8.52,
+        11.98
+      ],
+      "zoom": 9.8,
+      "pitch": 40,
+      "bearing": 12
+    },
+    {
+      "id": "ibadan",
+      "name": "Ibadan",
+      "center": [
+        3.9,
+        7.4
+      ],
+      "zoom": 9.6,
+      "pitch": 32,
+      "bearing": -8
+    },
+    {
+      "id": "kaduna",
+      "name": "Kaduna",
+      "center": [
+        7.43,
+        10.52
+      ],
+      "zoom": 9.3,
+      "pitch": 38,
+      "bearing": 20
+    },
+    {
+      "id": "onitsha",
+      "name": "Onitsha",
+      "center": [
+        6.79,
+        6.05
+      ],
+      "zoom": 10.2,
+      "pitch": 42,
+      "bearing": -22
+    }
+  ]
+}
