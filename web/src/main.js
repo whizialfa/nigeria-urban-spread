@@ -303,6 +303,7 @@ function applyFilters() {
   if (map.getLayer("ring-labels")) map.setFilter("ring-labels", ["==", ["get", "slug"], city]);
   if (map.getLayer("centres")) map.setFilter("centres", ["==", ["get", "slug"], city]);
   if (map.getLayer("centre-label")) map.setFilter("centre-label", ["==", ["get", "slug"], city]);
+  if (map.getLayer("outline-halo")) map.setFilter("outline-halo", ["==", ["get", "id"], city]);
   if (map.getLayer("outline")) map.setFilter("outline", ["==", ["get", "id"], city]);
   if (map.getLayer("outline-hit")) map.setFilter("outline-hit", ["==", ["get", "id"], city]);
   if (map.getLayer("city-underlay")) map.setFilter("city-underlay", ["==", ["get", "id"], city]);
@@ -424,7 +425,7 @@ function renderLgaList() {
         lat = ring.reduce((s, c) => s + c[1], 0) / ring.length;
       }
       map.easeTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 11.2), duration: 900 });
-      showPopup([lon, lat], lgaPopupHtml(p));
+      showPopup([lon, lat], lgaPopupHtml(p), map.project([lon, lat]));
     });
     els.lgaList.appendChild(btn);
   });
@@ -725,11 +726,8 @@ function addThematic(data) {
       "line-opacity": 0.42,
     },
   });
-  // Cream casing + dark halo + bright green — readable on red change and gray basemap.
+  // Cream casing + green core (no fat dark halo) — same family as the plates.
   const ringLineLayout = { "line-join": "round", "line-cap": "round" };
-  const ringCasingW = ["interpolate", ["linear"], ["zoom"], 8, 11, 12, 15];
-  const ringHaloW = ["interpolate", ["linear"], ["zoom"], 8, 8, 12, 11];
-  const ringCoreW = ["interpolate", ["linear"], ["zoom"], 8, 5, 12, 7];
   add({
     id: "rings-casing",
     type: "line",
@@ -737,7 +735,7 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_CASING,
-      "line-width": ringCasingW,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5.5, 12, 7.5],
       "line-opacity": 0.95,
     },
   });
@@ -748,8 +746,9 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_CASING,
-      "line-width": ringCasingW,
-      "line-opacity": 0.95,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5, 12, 7],
+      "line-opacity": 0.92,
+      "line-dasharray": [2.2, 1.4],
     },
   });
   add({
@@ -759,41 +758,9 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_CASING,
-      "line-width": ringCasingW,
-      "line-opacity": 0.95,
-    },
-  });
-  add({
-    id: "rings-halo",
-    type: "line",
-    source: "rings",
-    layout: ringLineLayout,
-    paint: {
-      "line-color": RING_HALO,
-      "line-width": ringHaloW,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4.5, 12, 6.5],
       "line-opacity": 0.9,
-    },
-  });
-  add({
-    id: "rings-dash-halo",
-    type: "line",
-    source: "rings",
-    layout: ringLineLayout,
-    paint: {
-      "line-color": RING_HALO,
-      "line-width": ringHaloW,
-      "line-opacity": 0.9,
-    },
-  });
-  add({
-    id: "rings-dot-halo",
-    type: "line",
-    source: "rings",
-    layout: ringLineLayout,
-    paint: {
-      "line-color": RING_HALO,
-      "line-width": ringHaloW,
-      "line-opacity": 0.9,
+      "line-dasharray": [0.9, 1.5],
     },
   });
   add({
@@ -803,7 +770,7 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.central,
-      "line-width": ringCoreW,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.2, 12, 4.2],
       "line-opacity": 1,
     },
   });
@@ -814,8 +781,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.intermediate,
-      "line-width": ringCoreW,
-      "line-dasharray": [2.2, 1.0],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.8, 12, 3.6],
+      "line-dasharray": [2.2, 1.4],
       "line-opacity": 1,
     },
   });
@@ -826,25 +793,24 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.distant,
-      "line-width": ringCoreW,
-      "line-dasharray": [1.0, 1.0],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.4, 12, 3.2],
+      "line-dasharray": [0.9, 1.5],
       "line-opacity": 1,
     },
   });
-  // Curved labels: dense vertices + line placement so glyphs follow each arc.
+  // One curved label per ring, following the densified arc.
   add({
     id: "ring-labels",
     type: "symbol",
     source: "rings",
     layout: {
-      "symbol-placement": "line",
-      "symbol-spacing": 1400,
+      "symbol-placement": "line-center",
       "text-field": ["get", "label"],
-      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 12.5, 11, 15, 13, 17],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 12, 11, 14, 13, 16],
       "text-font": FONT_BOLD,
-      "text-max-angle": 30,
+      "text-max-angle": 50,
       "text-padding": 2,
-      "text-letter-spacing": 0.05,
+      "text-letter-spacing": 0.03,
       "text-keep-upright": true,
       "text-rotation-alignment": "map",
       "text-pitch-alignment": "viewport",
@@ -857,16 +823,16 @@ function addThematic(data) {
         "match",
         ["get", "zone"],
         "central",
-        ZONE_GREENS.central,
+        "#9fdfb0",
         "intermediate",
-        ZONE_GREENS.intermediate,
-        ZONE_GREENS.distant,
+        "#b7e4c0",
+        "#d0edda",
       ],
-      "text-halo-color": RING_CASING,
-      "text-halo-width": 3.8,
-      "text-halo-blur": 0.15,
+      "text-halo-color": "#0c100e",
+      "text-halo-width": 2.4,
+      "text-halo-blur": 0,
     },
-    minzoom: 7,
+    minzoom: 7.5,
   });
   add({
     id: "outline-hit",
@@ -875,14 +841,25 @@ function addThematic(data) {
     paint: { "fill-color": "#000", "fill-opacity": 0 },
   });
   add({
+    id: "outline-halo",
+    type: "line",
+    source: "cities",
+    layout: { "line-join": "round", "line-cap": "round" },
+    paint: {
+      "line-color": EDGE_HALO,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4.2, 11, 5.4, 13, 6.2],
+      "line-opacity": 0.85,
+    },
+  });
+  add({
     id: "outline",
     type: "line",
     source: "cities",
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
       "line-color": EDGE,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.55, 11, 0.75, 13, 0.9],
-      "line-opacity": 0.28,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.4, 11, 3.2, 13, 3.8],
+      "line-opacity": 0.95,
     },
   });
   add({
@@ -1086,18 +1063,58 @@ els.themeToggle.addEventListener("click", () => {
   writeUrl();
 });
 
-function showPopup(lngLat, html) {
+function popupAnchorForPoint(point) {
+  const { clientWidth: w, clientHeight: h } = map.getCanvas();
+  const x = point.x;
+  const y = point.y;
+  const left = x < w * 0.28;
+  const right = x > w * 0.72;
+  const top = y < h * 0.32;
+  const bottom = y > h * 0.68;
+  if (top && left) return "top-left";
+  if (top && right) return "top-right";
+  if (top) return "top";
+  if (bottom && left) return "bottom-left";
+  if (bottom && right) return "bottom-right";
+  if (bottom) return "bottom";
+  if (left) return "left";
+  if (right) return "right";
+  return "bottom";
+}
+
+function keepPopupInView(pop) {
+  const el = pop?.getElement?.();
+  if (!el) return;
+  const mapEl = map.getContainer();
+  const pr = el.getBoundingClientRect();
+  const mr = mapEl.getBoundingClientRect();
+  const pad = 14;
+  const leftPad = document.body.classList.contains("panel-open") ? 8 : pad;
+  let dx = 0;
+  let dy = 0;
+  if (pr.left < mr.left + leftPad) dx = mr.left + leftPad - pr.left;
+  if (pr.right > mr.right - pad) dx = mr.right - pad - pr.right;
+  if (pr.top < mr.top + pad) dy = mr.top + pad - pr.top;
+  if (pr.bottom > mr.bottom - pad) dy = mr.bottom - pad - pr.bottom;
+  if (dx || dy) map.panBy([dx, dy], { duration: 220 });
+}
+
+function showPopup(lngLat, html, point) {
   if (popup) popup.remove();
+  const pt = point || map.project(lngLat);
   popup = new maplibregl.Popup({
     maxWidth: "340px",
-    anchor: "bottom",
-    offset: 14,
+    anchor: popupAnchorForPoint(pt),
+    offset: 16,
     closeButton: true,
     className: "wch-pop",
   })
     .setLngLat(lngLat)
     .setHTML(html)
     .addTo(map);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => keepPopupInView(popup));
+  });
 }
 
 function popupFromFeature(f, lgaProps) {
@@ -1108,7 +1125,7 @@ function popupFromFeature(f, lgaProps) {
   if (id.startsWith("rings") && id !== "ring-labels") return ringPopupHtml(p, lgaProps);
   if (id === "zones-fill") return zonePopupHtml(p, lgaProps);
   if (id === "lgas-hit") return lgaPopupHtml(p);
-  if (id === "outline" || id === "outline-hit") {
+  if (id === "outline" || id === "outline-hit" || id === "outline-halo") {
     const c = meta.cities[p.id];
     return c ? cityPopupHtml(p.id, c) : null;
   }
@@ -1121,30 +1138,26 @@ function bindPopup() {
     "rings-casing",
     "rings-dash-casing",
     "rings-dot-casing",
-    "rings-halo",
-    "rings-dash-halo",
-    "rings-dot-halo",
     "rings",
     "rings-dash",
     "rings-dot",
     "zones-fill",
     "lgas-hit",
     "outline",
+    "outline-halo",
   ];
   const priority = [
     "centres",
     "rings",
     "rings-dash",
     "rings-dot",
-    "rings-halo",
-    "rings-dash-halo",
-    "rings-dot-halo",
     "rings-casing",
     "rings-dash-casing",
     "rings-dot-casing",
     "zones-fill",
     "lgas-hit",
     "outline",
+    "outline-halo",
   ];
 
   hitLayers.forEach((id) => {
@@ -1165,7 +1178,7 @@ function bindPopup() {
     });
     const lgaFeat = feats.find((f) => f.layer?.id === "lgas-hit");
     const html = popupFromFeature(ranked[0], lgaFeat?.properties);
-    if (html) showPopup(e.lngLat, html);
+    if (html) showPopup(e.lngLat, html, e.point);
   });
 }
 
