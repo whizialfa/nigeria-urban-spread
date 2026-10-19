@@ -1,7 +1,7 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "13";
+const ASSET = "14";
 const CREDIT = "© OpenStreetMap · Esri · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
@@ -79,9 +79,7 @@ const RASTER = {
         "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
       ),
     ],
-    labels: bust(
-      "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
-    ),
+    // No Esri reference labels — they duplicate our LGA names (e.g. Agege).
     maxzoom: 16,
   },
   dark: {
@@ -90,9 +88,6 @@ const RASTER = {
         "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
       ),
     ],
-    labels: bust(
-      "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
-    ),
     maxzoom: 16,
   },
   osm: {
@@ -305,6 +300,7 @@ function applyFilters() {
   if (map.getLayer("centre-label")) map.setFilter("centre-label", ["==", ["get", "slug"], city]);
   if (map.getLayer("outline")) map.setFilter("outline", ["==", ["get", "id"], city]);
   if (map.getLayer("outline-hit")) map.setFilter("outline-hit", ["==", ["get", "id"], city]);
+  if (map.getLayer("city-underlay")) map.setFilter("city-underlay", ["==", ["get", "id"], city]);
 }
 
 function setChangeOverlay(slug) {
@@ -348,7 +344,7 @@ function setLayerVisibility() {
     lgas: ["lgas-line", "lgas-hit"],
     places: ["places"],
     centres: ["centres", "centre-label"],
-    outline: ["outline", "outline-hit"],
+    outline: ["outline", "outline-hit", "city-underlay"],
   };
   Object.entries(mapLayers).forEach(([key, ids]) => {
     const on = els.layers[key]?.checked;
@@ -493,6 +489,7 @@ function addThematic(data) {
   ensure("ring-label-pts", data.ringLabels || { type: "FeatureCollection", features: [] });
   ensure("lgas", data.lgas);
   ensure("lga-boundaries", data.lgaBoundaries || { type: "FeatureCollection", features: [] });
+  ensure("lga-label-pts", data.lgaLabelPts || { type: "FeatureCollection", features: [] });
   ensure("centres", data.centres);
   ensure("cities", data.cities);
 
@@ -500,6 +497,17 @@ function addThematic(data) {
     if (!map.getLayer(layer.id)) map.addLayer(layer);
   };
 
+  // Opaque city underlay — residual edge gaps show plate cream, never white basemap.
+  add({
+    id: "city-underlay",
+    type: "fill",
+    source: "cities",
+    paint: {
+      "fill-color": "#ece8de",
+      "fill-opacity": 1,
+      "fill-antialias": false,
+    },
+  });
   add({
     id: "zones-fill",
     type: "fill",
@@ -535,9 +543,13 @@ function addThematic(data) {
     id: "lgas-line",
     type: "line",
     source: "lga-boundaries",
+    layout: {
+      "line-join": "round",
+      "line-cap": "round",
+    },
     paint: {
       "line-color": LGA_LINE,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.1, 11, 1.7, 13, 2.2],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.0, 11, 1.5, 13, 1.9],
       "line-opacity": 1,
     },
   });
@@ -621,16 +633,17 @@ function addThematic(data) {
   add({
     id: "places",
     type: "symbol",
-    source: "lgas",
+    source: "lga-label-pts",
     layout: {
       "text-field": ["get", "lga_name"],
       "text-size": ["interpolate", ["linear"], ["zoom"], 8.5, 10, 11, 12, 13, 13],
       "text-font": FONT_REG,
       "text-optional": false,
-      "text-padding": 2,
+      "text-padding": 4,
       "text-max-width": 8,
       "symbol-sort-key": ["to-number", ["get", "km2"]],
       "text-allow-overlap": false,
+      "text-ignore-placement": false,
     },
     paint: {
       "text-color": PLACE_INK,
@@ -690,20 +703,22 @@ function addThematic(data) {
 async function loadData() {
   if (dataCache) return dataCache;
   const opts = { cache: "no-store" };
-  const [zones, rings, ringLabels, lgas, lgaBoundaries, centres, cities, m, search] = await Promise.all([
-    fetch(`./data/zones.geojson?v=${ASSET}`, opts).then((r) => r.json()),
-    fetch(`./data/zone_rings.geojson?v=${ASSET}`, opts).then((r) => r.json()),
-    fetch(`./data/zone_labels.geojson?v=${ASSET}`, opts).then((r) => r.json()),
-    fetch(`./data/lgas.geojson?v=${ASSET}`, opts).then((r) => r.json()),
-    fetch(`./data/lga_boundaries.geojson?v=${ASSET}`, opts).then((r) => r.json()),
-    fetch(`./data/centres.geojson?v=${ASSET}`, opts).then((r) => r.json()),
-    fetch(`./data/cities.geojson?v=${ASSET}`, opts).then((r) => r.json()),
-    fetch(`./data/meta.json?v=${ASSET}`, opts).then((r) => r.json()),
-    fetch(`./data/search.json?v=${ASSET}`, opts).then((r) => r.json()),
-  ]);
+  const [zones, rings, ringLabels, lgas, lgaBoundaries, lgaLabelPts, centres, cities, m, search] =
+    await Promise.all([
+      fetch(`./data/zones.geojson?v=${ASSET}`, opts).then((r) => r.json()),
+      fetch(`./data/zone_rings.geojson?v=${ASSET}`, opts).then((r) => r.json()),
+      fetch(`./data/zone_labels.geojson?v=${ASSET}`, opts).then((r) => r.json()),
+      fetch(`./data/lgas.geojson?v=${ASSET}`, opts).then((r) => r.json()),
+      fetch(`./data/lga_boundaries.geojson?v=${ASSET}`, opts).then((r) => r.json()),
+      fetch(`./data/lga_labels.geojson?v=${ASSET}`, opts).then((r) => r.json()),
+      fetch(`./data/centres.geojson?v=${ASSET}`, opts).then((r) => r.json()),
+      fetch(`./data/cities.geojson?v=${ASSET}`, opts).then((r) => r.json()),
+      fetch(`./data/meta.json?v=${ASSET}`, opts).then((r) => r.json()),
+      fetch(`./data/search.json?v=${ASSET}`, opts).then((r) => r.json()),
+    ]);
   meta = m;
   searchIndex = search;
-  dataCache = { zones, rings, ringLabels, lgas, lgaBoundaries, centres, cities };
+  dataCache = { zones, rings, ringLabels, lgas, lgaBoundaries, lgaLabelPts, centres, cities };
   return dataCache;
 }
 
