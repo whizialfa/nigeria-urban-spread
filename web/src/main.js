@@ -1,7 +1,7 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "22";
+const ASSET = "23";
 const CREDIT = "© OpenStreetMap · Esri · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
@@ -9,19 +9,19 @@ const FONT_REG = ["Noto Sans Regular"];
 const FONT_BOLD = ["Noto Sans Bold"];
 const TOUR_KEY = "wch-tour-done";
 
-/* Bright web greens — plate darks wash out on the red change raster. */
+/* Plate greens with a light cream casing — clean rings, readable on dark and change. */
 const ZONE_GREENS = {
-  central: "#007a33",
-  intermediate: "#1a9f4a",
-  distant: "#3dba5c",
+  central: "#005a32",
+  intermediate: "#238b45",
+  distant: "#41ab5d",
 };
-const RING_CASING = "#fff8e7";
-const RING_HALO = "#0b120c";
-const EDGE = "#2a2622";
-const LGA_LINE = "#6e655c";
+const RING_CASING = "#f7f4ee";
+const EDGE = "#f0ebe3";
+const EDGE_HALO = "#0a0a0a";
+const LGA_LINE = "#c8bfb4";
 const STAR_YELLOW = "#ffd600";
-const PLACE_INK = "#1e1a16";
-const PLACE_HALO = "#fafafa";
+const PLACE_INK = "#f4efe6";
+const PLACE_HALO = "#12100e";
 
 const CHANGE_LEGEND = [
   ["#2166ac", "≤ −25"],
@@ -129,7 +129,7 @@ const TOUR_STEPS = [
   },
   {
     title: "Contents and bookmarks",
-    body: "Hide the panel with ☰. Bookmarks and Locate jump cities. Gray (plates) is the default base; OpenStreetMap is also available.",
+    body: "Hide the panel with ☰. Bookmarks and Locate jump cities. Dark gray is the default base; Gray (plates) and OpenStreetMap are also available.",
   },
   {
     title: "Story and share",
@@ -183,7 +183,7 @@ let city = ["lagos", "kano", "ibadan", "kaduna", "onitsha"].includes(params.get(
   : "lagos";
 let basemap = ["gray", "osm", "dark", "streets", "color", "imagery"].includes(params.get("bm"))
   ? params.get("bm")
-  : "gray";
+  : "dark";
 let storyMode = params.get("story") === "1";
 let meta = null;
 let searchIndex = [];
@@ -268,7 +268,7 @@ els.fab.addEventListener("click", () => setPanel(true));
 function writeUrl() {
   const q = new URLSearchParams();
   if (city !== "lagos") q.set("city", city);
-  if (basemap !== "gray") q.set("bm", basemap);
+  if (basemap !== "dark") q.set("bm", basemap);
   if (storyMode) q.set("story", "1");
   if (document.documentElement.classList.contains("theme-dark")) q.set("theme", "dark");
   const qs = q.toString();
@@ -290,13 +290,10 @@ function applyFilters() {
   if (map.getLayer("zones-line")) map.setFilter("zones-line", cityFilter());
   const ringFilters = {
     "rings-casing": ["central"],
-    "rings-halo": ["central"],
     rings: ["central"],
     "rings-dash-casing": ["intermediate"],
-    "rings-dash-halo": ["intermediate"],
     "rings-dash": ["intermediate"],
     "rings-dot-casing": ["distant"],
-    "rings-dot-halo": ["distant"],
     "rings-dot": ["distant"],
   };
   Object.entries(ringFilters).forEach(([id, zones]) => {
@@ -352,9 +349,6 @@ function setLayerVisibility() {
       "rings-casing",
       "rings-dash-casing",
       "rings-dot-casing",
-      "rings-halo",
-      "rings-dash-halo",
-      "rings-dot-halo",
       "rings",
       "rings-dash",
       "rings-dot",
@@ -363,7 +357,7 @@ function setLayerVisibility() {
     lgas: ["lgas-line", "lgas-hit"],
     places: ["places"],
     centres: ["centres", "centre-label"],
-    outline: ["outline", "outline-hit", "city-underlay"],
+    outline: ["outline-halo", "outline", "outline-hit", "city-underlay"],
   };
   Object.entries(mapLayers).forEach(([key, ids]) => {
     const on = els.layers[key]?.checked;
@@ -440,7 +434,7 @@ function popupShell(kicker, title, body) {
   return `<div class="pop"><p class="pop-kicker">${kicker}</p><strong>${title}</strong>${body}</div>`;
 }
 
-function densifyRingCoords(coords, targetStepDeg = 0.0012) {
+function densifyRingCoords(coords, targetStepDeg = 0.00035) {
   if (!Array.isArray(coords) || coords.length < 2) return coords;
   const out = [coords[0]];
   for (let i = 1; i < coords.length; i += 1) {
@@ -837,19 +831,20 @@ function addThematic(data) {
       "line-opacity": 1,
     },
   });
-  // One curved label per ring — glyphs follow the densified arc.
+  // Curved labels: dense vertices + line placement so glyphs follow each arc.
   add({
     id: "ring-labels",
     type: "symbol",
     source: "rings",
     layout: {
-      "symbol-placement": "line-center",
+      "symbol-placement": "line",
+      "symbol-spacing": 1400,
       "text-field": ["get", "label"],
-      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 13, 11, 15.5, 13, 17.5],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 12.5, 11, 15, 13, 17],
       "text-font": FONT_BOLD,
-      "text-max-angle": 45,
+      "text-max-angle": 30,
       "text-padding": 2,
-      "text-letter-spacing": 0.04,
+      "text-letter-spacing": 0.05,
       "text-keep-upright": true,
       "text-rotation-alignment": "map",
       "text-pitch-alignment": "viewport",
@@ -886,8 +881,8 @@ function addThematic(data) {
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
       "line-color": EDGE,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.7, 11, 0.95, 13, 1.15],
-      "line-opacity": 0.38,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.55, 11, 0.75, 13, 0.9],
+      "line-opacity": 0.28,
     },
   });
   add({
