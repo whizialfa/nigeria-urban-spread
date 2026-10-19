@@ -1,7 +1,7 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "25";
+const ASSET = "26";
 const CREDIT = "© OpenStreetMap · Esri · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
@@ -474,8 +474,9 @@ function ringLabelArcs(fc) {
       const coords = densifyRingCoords(f.geometry.coordinates, 0.00025);
       if (coords.length < 8) return [];
       const n = coords.length - 1; // closed ring
-      const start = Math.floor(n * 0.08);
-      const end = Math.max(start + 12, Math.floor(n * 0.28));
+      // Long NE–E arc so the full “Zone · km” string fits and still bends.
+      const start = Math.floor(n * 0.05);
+      const end = Math.max(start + 24, Math.floor(n * 0.42));
       return [
         {
           type: "Feature",
@@ -819,19 +820,20 @@ function addThematic(data) {
       "line-opacity": 1,
     },
   });
-  // Labels on NE arc slices so glyphs clearly curve with the ring.
+  // Labels on long arc slices so glyphs fit and curve with the ring.
   add({
     id: "ring-labels",
     type: "symbol",
     source: "ring-label-arcs",
     layout: {
-      "symbol-placement": "line-center",
+      "symbol-placement": "line",
+      "symbol-spacing": 5000,
       "text-field": ["get", "label"],
-      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 13, 11, 15.5, 13, 17.5],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 11.5, 10, 13.5, 12, 15.5],
       "text-font": FONT_BOLD,
-      "text-max-angle": 40,
+      "text-max-angle": 35,
       "text-padding": 1,
-      "text-letter-spacing": 0.05,
+      "text-letter-spacing": 0.04,
       "text-keep-upright": true,
       "text-rotation-alignment": "map",
       "text-pitch-alignment": "viewport",
@@ -850,7 +852,7 @@ function addThematic(data) {
         ZONE_GREENS.distant,
       ],
       "text-halo-color": RING_CASING,
-      "text-halo-width": 4,
+      "text-halo-width": 4.2,
       "text-halo-blur": 0.1,
     },
     minzoom: 7,
