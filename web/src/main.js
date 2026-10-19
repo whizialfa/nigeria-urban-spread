@@ -1,7 +1,7 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "9";
+const ASSET = "13";
 const CREDIT = "© OpenStreetMap · Esri · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
@@ -39,32 +39,31 @@ function makeStarImageData(size = 64) {
   const ctx = canvas.getContext("2d");
   const cx = size / 2;
   const cy = size / 2;
-  const spikes = 5;
-  const outer = size * 0.42;
-  const inner = size * 0.17;
-  ctx.beginPath();
-  for (let i = 0; i < spikes * 2; i += 1) {
-    const r = i % 2 === 0 ? outer : inner;
-    const a = -Math.PI / 2 + (i * Math.PI) / spikes;
-    const x = cx + Math.cos(a) * r;
-    const y = cy + Math.sin(a) * r;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
+  const starPath = (outer, inner) => {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i += 1) {
+      const r = i % 2 === 0 ? outer : inner;
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  };
+  // One star only: thin dark edge then yellow body.
+  starPath(size * 0.40, size * 0.16);
+  ctx.fillStyle = "#111111";
+  ctx.fill();
+  starPath(size * 0.365, size * 0.145);
   ctx.fillStyle = STAR_YELLOW;
   ctx.fill();
-  ctx.lineJoin = "round";
-  ctx.strokeStyle = "#111";
-  ctx.lineWidth = size * 0.045;
-  ctx.stroke();
   return ctx.getImageData(0, 0, size, size);
 }
 
 function ensureCentreStar() {
   if (map.hasImage("centre-star")) map.removeImage("centre-star");
-  const img = makeStarImageData(128);
-  map.addImage("centre-star", img, { pixelRatio: 2 });
+  map.addImage("centre-star", makeStarImageData(96), { pixelRatio: 2 });
 }
 
 const bust = (url) => `${url}${url.includes("?") ? "&" : "?"}v=${ASSET}`;
@@ -285,7 +284,9 @@ function cityFilter(field = "city") {
 
 function applyFilters() {
   if (!map.getLayer("outline")) return;
-  if (map.getLayer("lgas-line")) map.setFilter("lgas-line", cityFilter());
+  if (map.getLayer("lgas-line")) {
+    map.setFilter("lgas-line", ["all", cityFilter(), ["==", ["get", "kind"], "shared"]]);
+  }
   if (map.getLayer("lgas-hit")) map.setFilter("lgas-hit", cityFilter());
   if (map.getLayer("places")) map.setFilter("places", cityFilter());
   if (map.getLayer("zones-fill")) map.setFilter("zones-fill", cityFilter());
@@ -491,6 +492,7 @@ function addThematic(data) {
   ensure("rings", data.rings);
   ensure("ring-label-pts", data.ringLabels || { type: "FeatureCollection", features: [] });
   ensure("lgas", data.lgas);
+  ensure("lga-boundaries", data.lgaBoundaries || { type: "FeatureCollection", features: [] });
   ensure("centres", data.centres);
   ensure("cities", data.cities);
 
@@ -532,10 +534,10 @@ function addThematic(data) {
   add({
     id: "lgas-line",
     type: "line",
-    source: "lgas",
+    source: "lga-boundaries",
     paint: {
       "line-color": LGA_LINE,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.2, 11, 2.0, 13, 2.6],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.1, 11, 1.7, 13, 2.2],
       "line-opacity": 1,
     },
   });
@@ -639,30 +641,24 @@ function addThematic(data) {
     minzoom: 8.8,
   });
 
-  ensureCentreStar();
   add({
     id: "centres",
     type: "symbol",
     source: "centres",
     layout: {
-      "icon-image": "centre-star",
-      "icon-size": 1.2,
-      "icon-allow-overlap": true,
-      "icon-ignore-placement": true,
-      "icon-anchor": "center",
       "text-field": "★",
-      "text-size": 26,
+      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 22, 12, 30],
       "text-font": FONT_BOLD,
       "text-allow-overlap": true,
       "text-ignore-placement": true,
-      "text-optional": true,
       "text-anchor": "center",
+      "text-optional": false,
     },
     paint: {
       "text-color": STAR_YELLOW,
-      "text-halo-color": "#111111",
-      "text-halo-width": 1.4,
-      "icon-opacity": 1,
+      "text-halo-color": "#1a120c",
+      "text-halo-width": 0.55,
+      "text-halo-blur": 0,
     },
   });
   add({
@@ -694,11 +690,12 @@ function addThematic(data) {
 async function loadData() {
   if (dataCache) return dataCache;
   const opts = { cache: "no-store" };
-  const [zones, rings, ringLabels, lgas, centres, cities, m, search] = await Promise.all([
+  const [zones, rings, ringLabels, lgas, lgaBoundaries, centres, cities, m, search] = await Promise.all([
     fetch(`./data/zones.geojson?v=${ASSET}`, opts).then((r) => r.json()),
     fetch(`./data/zone_rings.geojson?v=${ASSET}`, opts).then((r) => r.json()),
     fetch(`./data/zone_labels.geojson?v=${ASSET}`, opts).then((r) => r.json()),
     fetch(`./data/lgas.geojson?v=${ASSET}`, opts).then((r) => r.json()),
+    fetch(`./data/lga_boundaries.geojson?v=${ASSET}`, opts).then((r) => r.json()),
     fetch(`./data/centres.geojson?v=${ASSET}`, opts).then((r) => r.json()),
     fetch(`./data/cities.geojson?v=${ASSET}`, opts).then((r) => r.json()),
     fetch(`./data/meta.json?v=${ASSET}`, opts).then((r) => r.json()),
@@ -706,7 +703,7 @@ async function loadData() {
   ]);
   meta = m;
   searchIndex = search;
-  dataCache = { zones, rings, ringLabels, lgas, centres, cities };
+  dataCache = { zones, rings, ringLabels, lgas, lgaBoundaries, centres, cities };
   return dataCache;
 }
 
