@@ -1,0 +1,75 @@
+/** Scrollytelling beats — view + highlight drive the map. */
+export const chapters = [
+  {
+    id: "open",
+    title: "Five cities, one question",
+    body: `Mexico’s big cities lost people at the centre while the edge filled. Did Nigeria’s five largest — Lagos, Kano, Ibadan, Kaduna, Onitsha — do the same?`,
+    view: { center: [7.2, 8.8], zoom: 5.2, pitch: 0, bearing: 0 },
+    highlight: "all",
+    caption: "Nigeria · five LGA cities on GHS-POP",
+  },
+  {
+    id: "national",
+    title: "The centres held",
+    body: `Together they grew from <strong>12.3</strong> to <strong>25.4</strong> million people. Their central zones took <strong>32%</strong> of that growth. The central share slipped only from <strong>35.8%</strong> to <strong>33.9%</strong>. Across 183 older Nigerian cities it fell from 39.1% to 29.9%.`,
+    view: { center: [7.2, 8.8], zoom: 5.4, pitch: 0, bearing: 0 },
+    highlight: "all",
+    caption: "Central share barely moved in the five",
+  },
+  {
+    id: "lagos",
+    title: "Lagos barely spread",
+    body: `Twenty LGAs. People more than doubled. The typical resident ended only <strong>1%</strong> farther from Iga Idunganran — the national fit expected about <strong>19%</strong>. Central share: 25.8% → 25.6%.`,
+    view: { center: [3.45, 6.52], zoom: 9.4, pitch: 35, bearing: -18 },
+    highlight: "lagos",
+    caption: "Lagos · φ 1.01 (expected 1.20)",
+  },
+  {
+    id: "kano",
+    title: "Kano still the densest centre",
+    body: `The Emir’s palace still sits in a city that keeps nearly half its people close in. Central share eased from <strong>55.3%</strong> to <strong>49.6%</strong>. Spread factor <strong>1.05</strong> against an expected 1.19.`,
+    view: { center: [8.52, 11.98], zoom: 9.8, pitch: 40, bearing: 12 },
+    highlight: "kano",
+    caption: "Kano · founding: Gidan Rumfa",
+  },
+  {
+    id: "ibadan",
+    title: "Ibadan, Mapo Hill",
+    body: `Eleven metropolitan LGAs. Central share 49.5% → 45.0%. People ended <strong>8%</strong> farther out — still well under the national expectation for a city that doubled.`,
+    view: { center: [3.9, 7.4], zoom: 9.6, pitch: 32, bearing: -8 },
+    highlight: "ibadan",
+    caption: "Ibadan · φ 1.08 (expected 1.19)",
+  },
+  {
+    id: "kaduna",
+    title: "Kaduna along Lugard’s axis",
+    body: `Four LGAs around Lugard Hall. Central share fell from 27.6% to 22.4%, but the typical distance only rose <strong>2%</strong>. The centre thinned in share; it did not scatter.`,
+    view: { center: [7.43, 10.52], zoom: 9.3, pitch: 38, bearing: 20 },
+    highlight: "kaduna",
+    caption: "Kaduna · φ 1.02",
+  },
+  {
+    id: "onitsha",
+    title: "Onitsha ended closer",
+    body: `Five Greater Onitsha LGAs. People finished <strong>5% closer</strong> to Ime-Obi Ogboza (φ 0.95). Central share rose from 21.4% to 23.9% — the only gain among the five.`,
+    view: { center: [6.79, 6.05], zoom: 10.2, pitch: 42, bearing: -22 },
+    highlight: "onitsha",
+    caption: "Onitsha · φ 0.95 · closer in",
+  },
+  {
+    id: "caveat",
+    title: "Trust the share, not the count",
+    body: `GHS-POP is modelled from built-up volume, not a census. On Mexico it turns a known central loss into a gain. The comparison between cities, and the mild slip in share, is the result. The absolute headcount at the centre needs a census.`,
+    view: { center: [7.2, 8.8], zoom: 5.3, pitch: 0, bearing: 0 },
+    highlight: "all",
+    caption: "Method check · Mexico test on the same grid",
+  },
+];
+
+export const cityStats = {
+  lagos: { share0: "25.8%", share1: "25.6%", phi: "1.01" },
+  kano: { share0: "55.3%", share1: "49.6%", phi: "1.05" },
+  ibadan: { share0: "49.5%", share1: "45.0%", phi: "1.08" },
+  kaduna: { share0: "27.6%", share1: "22.4%", phi: "1.02" },
+  onitsha: { share0: "21.4%", share1: "23.9%", phi: "0.95" },
+};

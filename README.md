@@ -1,10 +1,12 @@
 # Where the centre holds
 
+**Map:** [whizialfa.github.io/nigeria-urban-spread](https://whizialfa.github.io/nigeria-urban-spread/)
+
 **People and distance in Nigeria's five largest cities, 1990 to 2020**
 
 Adaptation of Peraza-Mues, Resendiz, Figueroa-Soriano, Prieto-Curiel and Ponce-Lopez (2025), [Scaling and population loss in Mexican urban centres](https://arxiv.org/abs/2509.16110). The anchor counts Mexico's census block by block in 69 cities. Nigeria has no census since 2006, so this runs the same rings, zones and spread factor on its five largest cities (Lagos, Kano, Ibadan, Kaduna and Onitsha, each drawn as its local government areas) with people from the GHS-POP grid. Each city is read against 183 older Nigerian cities on the same grid, checked against WorldPop, and the grid itself is tested on Mexico, where the census answer is known.
 
-Write-up: [`notes/results.md`](notes/results.md) and the PDF [`notes/where_the_centre_holds.pdf`](notes/where_the_centre_holds.pdf). Two-page brief: [`notes/where_the_centre_holds_brief.pdf`](notes/where_the_centre_holds_brief.pdf). Trace from raw input to every quoted number: [`notes/metric_trace.md`](notes/metric_trace.md).
+Write-up: [`notes/results.md`](notes/results.md) and the PDF [`notes/where_the_centre_holds.pdf`](notes/where_the_centre_holds.pdf). Two-page brief: [`notes/where_the_centre_holds_brief.pdf`](notes/where_the_centre_holds_brief.pdf). Trace from raw input to every quoted number: [`notes/metric_trace.md`](notes/metric_trace.md). Live scrolly map: [`web/`](web/) on GitHub Pages.
 
 ## Findings
 

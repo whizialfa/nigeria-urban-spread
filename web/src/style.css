@@ -1,0 +1,359 @@
+:root {
+  --ink: #071018;
+  --panel: rgba(10, 22, 32, 0.94);
+  --panel-edge: rgba(94, 196, 186, 0.4);
+  --text: #d7e4ea;
+  --muted: #7f96a3;
+  --accent: #5ec4ba;
+  --accent-soft: #9ad8d1;
+  --serif: "Fraunces", Georgia, serif;
+  --sans: "Source Sans 3", "Segoe UI", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--panel);
+  font-family: var(--sans);
+  font-size: 1.02rem;
+  line-height: 1.5;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem 0.75rem;
+  background: linear-gradient(
+    180deg,
+    rgba(7, 16, 24, 0.96),
+    rgba(7, 16, 24, 0.7),
+    transparent
+  );
+  pointer-events: none;
+}
+
+.topbar-text,
+.header-tools {
+  pointer-events: auto;
+}
+
+.topbar-kicker {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+}
+
+.gh-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(154, 216, 209, 0.35);
+}
+
+.gh-link:hover {
+  color: #fff;
+}
+
+.topbar h1 {
+  margin: 0.12rem 0 0;
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: clamp(1.05rem, 2.2vw, 1.5rem);
+  letter-spacing: -0.02em;
+  color: #e8f4f2;
+  line-height: 1.15;
+}
+
+.title-short {
+  display: none;
+}
+
+.header-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  max-width: 55%;
+}
+
+.basemap-wrap select,
+.header-tools button,
+.paper-link {
+  appearance: none;
+  border: 1px solid rgba(94, 196, 186, 0.45);
+  background: rgba(10, 22, 32, 0.88);
+  color: #e8f4f2;
+  font: 600 0.72rem/1 var(--sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.55rem;
+  border-radius: 2px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.basemap-wrap select {
+  max-width: 7.5rem;
+}
+
+.header-tools button:hover,
+.paper-link:hover,
+.basemap-wrap select:hover {
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.scrolly {
+  position: relative;
+  display: grid;
+}
+
+.map-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  z-index: 1;
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+}
+
+.map-caption {
+  position: absolute;
+  left: 0.85rem;
+  bottom: 1.1rem;
+  z-index: 2;
+  max-width: min(26rem, calc(100% - 1.7rem));
+  padding: 0.4rem 0.65rem;
+  border-radius: 2px;
+  background: rgba(7, 16, 24, 0.82);
+  color: #e8e2d6;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(6px);
+}
+
+.chapters {
+  position: relative;
+  z-index: 2;
+  width: min(22rem, calc(100% - 1.6rem));
+  margin: 0 0 0 auto;
+  padding: 72vh 0.8rem 42vh;
+  pointer-events: none;
+}
+
+.chapter {
+  pointer-events: auto;
+  margin: 0 0 62vh;
+  padding: 0.95rem 1rem 1.05rem;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--panel-edge);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.38);
+  opacity: 0.4;
+  transform: translateY(6px);
+  transition: opacity 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+}
+
+.chapter.is-active {
+  opacity: 1;
+  transform: translateY(0);
+  border-color: var(--accent);
+}
+
+.chapter h2 {
+  margin: 0 0 0.45rem;
+  font-family: var(--serif);
+  font-size: 1.28rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: #f2f7f9;
+}
+
+.chapter p {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.chapter strong {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.chapter-index {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tour[hidden] {
+  display: none !important;
+}
+
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.tour-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.tour-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(22rem, calc(100% - 2rem));
+  padding: 1.1rem 1.15rem 1rem;
+  background: #0f1c26;
+  border: 1px solid var(--accent);
+  color: var(--text);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.45);
+}
+
+.tour-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+}
+
+.tour-card h2 {
+  margin: 0 0 0.45rem;
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  color: #f2f7f9;
+}
+
+.tour-card p#tour-body {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+}
+
+.tour-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.tour-ghost,
+.tour-next {
+  border: 1px solid rgba(94, 196, 186, 0.45);
+  background: transparent;
+  color: #e8f4f2;
+  font: 600 0.75rem/1 var(--sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.tour-next {
+  background: var(--accent);
+  color: #071018;
+  border-color: var(--accent);
+}
+
+.maplibregl-ctrl-attrib {
+  font-size: 10px !important;
+  background: rgba(7, 16, 24, 0.55) !important;
+  color: #c9c3b8 !important;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: #9ad8d1 !important;
+}
+
+.maplibregl-ctrl-top-left {
+  top: 4.6rem;
+}
+
+@media (max-width: 820px) {
+  .title-full {
+    display: none;
+  }
+
+  .title-short {
+    display: inline;
+  }
+
+  .topbar-kicker {
+    font-size: 0.6rem;
+    max-width: 11rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .header-tools {
+    max-width: none;
+  }
+
+  .chapters {
+    width: calc(100% - 1.2rem);
+    margin: 0 auto;
+    padding: 60vh 0.6rem 36vh;
+  }
+
+  .chapter {
+    margin-bottom: 55vh;
+    padding: 0.85rem 0.9rem;
+  }
+
+  .map-caption {
+    left: 0.65rem;
+    right: 0.65rem;
+    max-width: none;
+    bottom: 0.75rem;
+  }
+
+  .maplibregl-ctrl-compass,
+  .maplibregl-ctrl-pitch {
+    display: none;
+  }
+}
