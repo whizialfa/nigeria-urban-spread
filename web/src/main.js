@@ -1,10 +1,12 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "7";
-const CREDIT = "Tiles © Esri · OpenStreetMap · OpenFreeMap";
+const ASSET = "9";
+const CREDIT = "© OpenStreetMap · Esri · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
-const GLYPHS = "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf";
+const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
+const FONT_REG = ["Noto Sans Regular"];
+const FONT_BOLD = ["Noto Sans Bold"];
 const TOUR_KEY = "wch-tour-done";
 
 /* Plate symbology from qgis/build_plates.py */
@@ -13,8 +15,8 @@ const ZONE_GREENS = {
   intermediate: "#238b45",
   distant: "#74c476",
 };
-const EDGE = "#1c1916";
-const LGA_LINE = "#463428";
+const EDGE = "#0a0a0a";
+const LGA_LINE = "#1a120c";
 const STAR_YELLOW = "#ffd600";
 const PLACE_INK = "#1e1a16";
 const PLACE_HALO = "#fafafa";
@@ -30,11 +32,40 @@ const CHANGE_LEGEND = [
   ["#7f0000", "> 200"],
 ];
 
-const STAR_SVG =
-  "data:image/svg+xml;charset=utf-8," +
-  encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="${STAR_YELLOW}" stroke="#000" stroke-width="1.1" d="M12 2.2l2.7 6.4 6.9.6-5.2 4.5 1.6 6.7L12 16.8 6 20.4l1.6-6.7L2.4 9.2l6.9-.6z"/></svg>`
-  );
+function makeStarImageData(size = 64) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const cx = size / 2;
+  const cy = size / 2;
+  const spikes = 5;
+  const outer = size * 0.42;
+  const inner = size * 0.17;
+  ctx.beginPath();
+  for (let i = 0; i < spikes * 2; i += 1) {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = -Math.PI / 2 + (i * Math.PI) / spikes;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = STAR_YELLOW;
+  ctx.fill();
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#111";
+  ctx.lineWidth = size * 0.045;
+  ctx.stroke();
+  return ctx.getImageData(0, 0, size, size);
+}
+
+function ensureCentreStar() {
+  if (map.hasImage("centre-star")) map.removeImage("centre-star");
+  const img = makeStarImageData(128);
+  map.addImage("centre-star", img, { pixelRatio: 2 });
+}
 
 const bust = (url) => `${url}${url.includes("?") ? "&" : "?"}v=${ASSET}`;
 const fmtPct = (x) => `${(100 * x).toFixed(1)}%`;
@@ -65,6 +96,15 @@ const RASTER = {
     ),
     maxzoom: 16,
   },
+  osm: {
+    tiles: [
+      "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    ],
+    maxzoom: 19,
+    attribution: "© OpenStreetMap contributors",
+  },
   streets: {
     tiles: [
       bust(
@@ -93,7 +133,7 @@ const TOUR_STEPS = [
   },
   {
     title: "Contents and bookmarks",
-    body: "Hide the panel with ☰. Bookmarks and Locate jump cities. Gray (plates) is the Esri light-gray base used in print.",
+    body: "Hide the panel with ☰. Bookmarks and Locate jump cities. Gray (plates) is the default base; OpenStreetMap is also available.",
   },
   {
     title: "Story and share",
@@ -145,7 +185,7 @@ const params = new URLSearchParams(location.search);
 let city = ["lagos", "kano", "ibadan", "kaduna", "onitsha"].includes(params.get("city"))
   ? params.get("city")
   : "lagos";
-let basemap = ["gray", "dark", "streets", "color", "imagery"].includes(params.get("bm"))
+let basemap = ["gray", "osm", "dark", "streets", "color", "imagery"].includes(params.get("bm"))
   ? params.get("bm")
   : "gray";
 let storyMode = params.get("story") === "1";
@@ -172,7 +212,7 @@ function rasterStyle(key) {
       tiles: spec.tiles,
       tileSize: 256,
       maxzoom: spec.maxzoom,
-      attribution: CREDIT,
+      attribution: spec.attribution || CREDIT,
     },
   };
   const layers = [{ id: "basemap", type: "raster", source: "basemap" }];
@@ -182,7 +222,7 @@ function rasterStyle(key) {
       tiles: [spec.labels],
       tileSize: 256,
       maxzoom: spec.maxzoom,
-      attribution: CREDIT,
+      attribution: spec.attribution || CREDIT,
     };
     layers.push({ id: "basemap-labels", type: "raster", source: "labels" });
   }
@@ -259,6 +299,7 @@ function applyFilters() {
   if (map.getLayer("rings-dot")) {
     map.setFilter("rings-dot", ["all", ["==", ["get", "slug"], city], ["==", ["get", "zone"], "distant"]]);
   }
+  if (map.getLayer("ring-labels")) map.setFilter("ring-labels", ["==", ["get", "slug"], city]);
   if (map.getLayer("centres")) map.setFilter("centres", ["==", ["get", "slug"], city]);
   if (map.getLayer("centre-label")) map.setFilter("centre-label", ["==", ["get", "slug"], city]);
   if (map.getLayer("outline")) map.setFilter("outline", ["==", ["get", "id"], city]);
@@ -302,7 +343,7 @@ function setLayerVisibility() {
   const mapLayers = {
     change: ["change"],
     zones: ["zones-fill", "zones-line"],
-    rings: ["rings", "rings-dash", "rings-dot"],
+    rings: ["rings", "rings-dash", "rings-dot", "ring-labels"],
     lgas: ["lgas-line", "lgas-hit"],
     places: ["places"],
     centres: ["centres", "centre-label"],
@@ -323,8 +364,8 @@ function renderScores() {
   els.scores.innerHTML = `
     <div class="score-card"><span>Central share</span><strong>${fmtPct(c.central_share_1990)} → ${fmtPct(c.central_share_2020)}</strong></div>
     <div class="score-card"><span>φ (expected)</span><strong>${fmtPhi(c.phi)} (${fmtPhi(c.phi_fit)})</strong></div>
-    <div class="score-card"><span>People 1990</span><strong>${fmtPeople(c.people_1990)}</strong></div>
-    <div class="score-card"><span>People 2020</span><strong>${fmtPeople(c.people_2020)}</strong></div>
+    <div class="score-card"><span>People in 1990</span><strong>${fmtPeople(c.people_1990)}</strong></div>
+    <div class="score-card"><span>People in 2020</span><strong>${fmtPeople(c.people_2020)}</strong></div>
   `;
   els.caption.textContent = `${c.name} · people gained/lost per 100 m · φ ${fmtPhi(c.phi)} (fit ${fmtPhi(c.phi_fit)})`;
 }
@@ -392,7 +433,8 @@ function zonePopupHtml(p) {
   const cityName = meta.cities[p.city]?.name || p.city;
   const share = p.share_2020 != null ? fmtPct(+p.share_2020) : "—";
   const share0 = p.share_1990 != null ? fmtPct(+p.share_1990) : "—";
-  return `<strong>${String(p.zone).replace("-", " ")} zone</strong><br/>${cityName}<br/>People 1990: ${fmtPeople(+p.people_1990 || 0)}<br/>People 2020: ${fmtPeople(+p.people_2020 || 0)}<br/>Share: ${share0} → ${share}<br/>Change: ${p.change != null ? fmtPeople(+p.change) : "—"}`;
+  const title = p.label || `${String(p.zone).replace(/-/g, " ")} zone`;
+  return `<strong>${title}</strong><br/>${cityName}<br/>People in 1990: ${fmtPeople(+p.people_1990 || 0)}<br/>People in 2020: ${fmtPeople(+p.people_2020 || 0)}<br/>Share: ${share0} → ${share}<br/>Change: ${p.change != null ? fmtPeople(+p.change) : "—"}`;
 }
 
 function renderLegend() {
@@ -409,7 +451,7 @@ function renderLegend() {
     <div class="legend-row"><span class="swatch" style="background:${ZONE_GREENS.distant}"></span>Distant zone edge</div>
     <div class="legend-row"><span class="swatch" style="background:transparent;border:2px solid ${EDGE}"></span>Study area</div>
     <div class="legend-row"><span class="swatch" style="background:transparent;border:2px solid ${LGA_LINE}"></span>Local government area</div>
-    <div class="legend-row"><span class="swatch" style="background:${STAR_YELLOW};border-radius:50%"></span>Founding centre</div>
+    <div class="legend-row"><span class="swatch star-swatch" style="background:${STAR_YELLOW}"></span>Founding centre</div>
   `;
 }
 
@@ -447,6 +489,7 @@ function addThematic(data) {
   };
   ensure("zones", data.zones);
   ensure("rings", data.rings);
+  ensure("ring-label-pts", data.ringLabels || { type: "FeatureCollection", features: [] });
   ensure("lgas", data.lgas);
   ensure("centres", data.centres);
   ensure("cities", data.cities);
@@ -492,8 +535,8 @@ function addThematic(data) {
     source: "lgas",
     paint: {
       "line-color": LGA_LINE,
-      "line-width": 1.0,
-      "line-opacity": 0.95,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.2, 11, 2.0, 13, 2.6],
+      "line-opacity": 1,
     },
   });
   add({
@@ -502,7 +545,7 @@ function addThematic(data) {
     source: "rings",
     paint: {
       "line-color": ZONE_GREENS.central,
-      "line-width": 2.2,
+      "line-width": 2.4,
       "line-opacity": 1,
     },
   });
@@ -512,7 +555,7 @@ function addThematic(data) {
     source: "rings",
     paint: {
       "line-color": ZONE_GREENS.intermediate,
-      "line-width": 1.8,
+      "line-width": 2.0,
       "line-dasharray": [2.2, 1.4],
     },
   });
@@ -522,9 +565,40 @@ function addThematic(data) {
     source: "rings",
     paint: {
       "line-color": ZONE_GREENS.distant,
-      "line-width": 1.6,
+      "line-width": 1.8,
       "line-dasharray": [0.9, 1.5],
     },
+  });
+  add({
+    id: "ring-labels",
+    type: "symbol",
+    source: "ring-label-pts",
+    layout: {
+      "text-field": ["get", "label"],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 11, 10, 12.5, 12, 14],
+      "text-font": FONT_BOLD,
+      "text-anchor": "left",
+      "text-offset": [0.25, 0],
+      "text-padding": 1,
+      "text-allow-overlap": true,
+      "text-ignore-placement": true,
+      "text-optional": false,
+    },
+    paint: {
+      "text-color": [
+        "match",
+        ["get", "zone"],
+        "central",
+        ZONE_GREENS.central,
+        "intermediate",
+        ZONE_GREENS.intermediate,
+        ZONE_GREENS.distant,
+      ],
+      "text-halo-color": "#f7f4ee",
+      "text-halo-width": 2.2,
+      "text-halo-blur": 0.15,
+    },
+    minzoom: 7.8,
   });
   add({
     id: "outline-hit",
@@ -538,7 +612,7 @@ function addThematic(data) {
     source: "cities",
     paint: {
       "line-color": EDGE,
-      "line-width": 2.0,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.2, 11, 3.0, 13, 3.6],
       "line-opacity": 1,
     },
   });
@@ -549,7 +623,7 @@ function addThematic(data) {
     layout: {
       "text-field": ["get", "lga_name"],
       "text-size": ["interpolate", ["linear"], ["zoom"], 8.5, 10, 11, 12, 13, 13],
-      "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+      "text-font": FONT_REG,
       "text-optional": false,
       "text-padding": 2,
       "text-max-width": 8,
@@ -565,51 +639,52 @@ function addThematic(data) {
     minzoom: 8.8,
   });
 
-  if (!map.hasImage("centre-star")) {
-    const img = new Image(48, 48);
-    img.onload = () => {
-      if (!map.hasImage("centre-star")) map.addImage("centre-star", img, { pixelRatio: 2 });
-      addCentreLayers();
-    };
-    img.src = STAR_SVG;
-  } else {
-    addCentreLayers();
-  }
-
-  function addCentreLayers() {
-    add({
-      id: "centres",
-      type: "symbol",
-      source: "centres",
-      layout: {
-        "icon-image": "centre-star",
-        "icon-size": 0.6,
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
-      },
-    });
-    add({
-      id: "centre-label",
-      type: "symbol",
-      source: "centres",
-      layout: {
-        "text-field": ["coalesce", ["get", "short"], ["get", "name"]],
-        "text-size": 12,
-        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-        "text-offset": [0, 1.5],
-        "text-anchor": "top",
-        "text-optional": false,
-        "text-allow-overlap": true,
-      },
-      paint: {
-        "text-color": PLACE_INK,
-        "text-halo-color": PLACE_HALO,
-        "text-halo-width": 1.5,
-      },
-    });
-    applyFilters();
-    setLayerVisibility();
-  }
+  ensureCentreStar();
+  add({
+    id: "centres",
+    type: "symbol",
+    source: "centres",
+    layout: {
+      "icon-image": "centre-star",
+      "icon-size": 1.2,
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+      "icon-anchor": "center",
+      "text-field": "★",
+      "text-size": 26,
+      "text-font": FONT_BOLD,
+      "text-allow-overlap": true,
+      "text-ignore-placement": true,
+      "text-optional": true,
+      "text-anchor": "center",
+    },
+    paint: {
+      "text-color": STAR_YELLOW,
+      "text-halo-color": "#111111",
+      "text-halo-width": 1.4,
+      "icon-opacity": 1,
+    },
+  });
+  add({
+    id: "centre-label",
+    type: "symbol",
+    source: "centres",
+    layout: {
+      "text-field": ["coalesce", ["get", "short"], ["get", "name"]],
+      "text-size": 12,
+      "text-font": FONT_BOLD,
+      "text-offset": [0, 1.85],
+      "text-anchor": "top",
+      "text-optional": false,
+      "text-allow-overlap": true,
+      "text-ignore-placement": true,
+    },
+    paint: {
+      "text-color": PLACE_INK,
+      "text-halo-color": PLACE_HALO,
+      "text-halo-width": 1.5,
+    },
+  });
 
   applyFilters();
   setChangeOverlay(city);
@@ -619,9 +694,10 @@ function addThematic(data) {
 async function loadData() {
   if (dataCache) return dataCache;
   const opts = { cache: "no-store" };
-  const [zones, rings, lgas, centres, cities, m, search] = await Promise.all([
+  const [zones, rings, ringLabels, lgas, centres, cities, m, search] = await Promise.all([
     fetch(`./data/zones.geojson?v=${ASSET}`, opts).then((r) => r.json()),
     fetch(`./data/zone_rings.geojson?v=${ASSET}`, opts).then((r) => r.json()),
+    fetch(`./data/zone_labels.geojson?v=${ASSET}`, opts).then((r) => r.json()),
     fetch(`./data/lgas.geojson?v=${ASSET}`, opts).then((r) => r.json()),
     fetch(`./data/centres.geojson?v=${ASSET}`, opts).then((r) => r.json()),
     fetch(`./data/cities.geojson?v=${ASSET}`, opts).then((r) => r.json()),
@@ -630,7 +706,7 @@ async function loadData() {
   ]);
   meta = m;
   searchIndex = search;
-  dataCache = { zones, rings, lgas, centres, cities };
+  dataCache = { zones, rings, ringLabels, lgas, centres, cities };
   return dataCache;
 }
 
@@ -638,19 +714,21 @@ async function switchBasemap(key) {
   basemap = key;
   els.basemap.value = key;
   els.basemapMobile.value = key;
+  writeUrl();
   const cam = {
     center: map.getCenter(),
     zoom: map.getZoom(),
     pitch: key === "color" ? 45 : 0,
-    bearing: map.getBearing(),
+    bearing: key === "color" ? map.getBearing() : 0,
   };
   const data = await loadData();
-  map.setStyle(key === "color" ? LIBERTY : rasterStyle(key));
-  map.once("style.load", () => {
-    map.jumpTo(cam);
-    addThematic(data);
-    writeUrl();
+  await new Promise((resolve) => {
+    map.once("style.load", resolve);
+    map.setStyle(key === "color" ? LIBERTY : rasterStyle(key), { diff: false });
   });
+  map.jumpTo(cam);
+  addThematic(data);
+  resizeMap();
 }
 
 els.basemap.addEventListener("change", () => switchBasemap(els.basemap.value));
@@ -785,7 +863,7 @@ function bindPopup() {
     if (!c) return;
     showPopup(
       e.lngLat,
-      `<strong>${c.name} study area</strong><br/>People ${fmtPeople(c.people_1990)} → ${fmtPeople(c.people_2020)}<br/>Central share ${fmtPct(c.central_share_1990)} → ${fmtPct(c.central_share_2020)}<br/>φ ${fmtPhi(c.phi)} (fit ${fmtPhi(c.phi_fit)})`
+      `<strong>${c.name} study area</strong><br/>People in 1990: ${fmtPeople(c.people_1990)}<br/>People in 2020: ${fmtPeople(c.people_2020)}<br/>Central share ${fmtPct(c.central_share_1990)} → ${fmtPct(c.central_share_2020)}<br/>φ ${fmtPhi(c.phi)} (fit ${fmtPhi(c.phi_fit)})`
     );
   });
   hover("outline");

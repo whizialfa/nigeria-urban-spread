@@ -32,7 +32,7 @@
       rel="stylesheet"
       href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css"
     />
-    <link rel="stylesheet" href="./src/style.css?v=7" />
+    <link rel="stylesheet" href="./src/style.css?v=9" />
   </head>
   <body>
     <header class="topbar">
@@ -66,6 +66,7 @@
           <span class="sr-only">Basemap</span>
           <select id="basemap-select" aria-label="Basemap">
             <option value="gray" selected>Gray (plates)</option>
+            <option value="osm">OpenStreetMap</option>
             <option value="dark">Dark gray</option>
             <option value="streets">Streets</option>
             <option value="color">Buildings 2.5D</option>
@@ -127,6 +128,7 @@
           Basemap
           <select id="basemap-select-mobile">
             <option value="gray" selected>Gray (plates)</option>
+            <option value="osm">OpenStreetMap</option>
             <option value="dark">Dark gray</option>
             <option value="streets">Streets</option>
             <option value="color">Buildings 2.5D</option>
@@ -208,6 +210,6 @@
     </div>
 
     <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
-    <script type="module" src="./src/main.js?v=7"></script>
+    <script type="module" src="./src/main.js?v=9"></script>
   </body>
 </html>

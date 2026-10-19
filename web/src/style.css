@@ -143,8 +143,7 @@ html.theme-dark .icon-btn,
 html.theme-dark .basemap-wrap select,
 html.theme-dark .header-tools button,
 html.theme-dark .paper-link,
-html.theme-dark .layers-fab,
-html.theme-dark .paper-btn {
+html.theme-dark .layers-fab {
   background: rgba(28, 24, 20, 0.95);
   color: #efe8dc;
   border-color: rgba(252, 141, 89, 0.45);
@@ -157,13 +156,17 @@ html.theme-dark .paper-btn {
   margin: 0.55rem 0 0.85rem;
   padding: 0.65rem 0.7rem;
   background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+  color: #fff !important;
+  border: 1px solid var(--accent);
   font-size: 0.78rem;
+  font-weight: 700;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
 }
 
 html.theme-dark .paper-btn {
-  color: #1c1916;
+  background: #fc8d59;
+  color: #1a1410 !important;
+  border-color: #fee8c8;
 }
 
 .panel-top {
@@ -289,7 +292,11 @@ html.theme-light .field input {
 .score-card {
   border: 1px solid var(--panel-edge);
   padding: 0.45rem 0.5rem;
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+html.theme-dark .score-card {
+  background: rgba(0, 0, 0, 0.28);
 }
 
 .score-card span {
@@ -450,6 +457,24 @@ html.theme-dark .lga-list {
   border-radius: 1px;
   flex: 0 0 auto;
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.swatch.star-swatch {
+  height: 1rem;
+  border: 0;
+  background: #ffd600;
+  clip-path: polygon(
+    50% 0%,
+    61% 35%,
+    98% 35%,
+    68% 57%,
+    79% 91%,
+    50% 70%,
+    21% 91%,
+    32% 57%,
+    2% 35%,
+    39% 35%
+  );
 }
 
 .docs {
