@@ -681,6 +681,10 @@ body:not(.panel-open) .map-caption {
   margin: 0.1rem 0 0.35rem;
 }
 
+.wch-pop .maplibregl-popup-content {
+  padding: 0.85rem 0.95rem 0.95rem;
+}
+
 .pop-kicker {
   margin: 0;
   font-size: 0.65rem;
@@ -701,8 +705,8 @@ body:not(.panel-open) .map-caption {
 
 .pop-dl {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.2rem 0.65rem;
+  grid-template-columns: 6.2rem 1fr;
+  gap: 0.28rem 0.7rem;
   margin: 0 0 0.45rem;
 }
 
@@ -717,6 +721,7 @@ body:not(.panel-open) .map-caption {
 .pop-dl dd {
   margin: 0;
   font-weight: 600;
+  color: var(--text);
 }
 
 .pop-note {
