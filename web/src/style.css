@@ -342,10 +342,27 @@ html.theme-light .field input {
   cursor: pointer;
 }
 
+.fine {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
 .legend {
   display: grid;
   gap: 0.3rem;
   font-size: 0.85rem;
+}
+
+.legend-title {
+  margin: 0.35rem 0 0.15rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .legend-row {

@@ -1,17 +1,39 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "5";
+const ASSET = "6";
 const CREDIT = "Tiles © Esri · OpenStreetMap · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 const TOUR_KEY = "wch-tour-done";
 
-const ZONE_COLORS = {
+/* Plate symbology from qgis/build_plates.py */
+const ZONE_GREENS = {
   central: "#005a32",
   intermediate: "#238b45",
   distant: "#74c476",
-  "peri-urban": "#c7e9c0",
 };
+const EDGE = "#1c1916";
+const LGA_LINE = "#463428";
+const STAR_YELLOW = "#ffd600";
+const PLACE_INK = "#1e1a16";
+const PLACE_HALO = "#fafafa";
+
+const CHANGE_LEGEND = [
+  ["#2166ac", "≤ −25"],
+  ["#92c5de", "−25 to −5"],
+  ["#ece8de", "−5 to 5"],
+  ["#fee8c8", "5 to 25"],
+  ["#fdbb84", "25 to 50"],
+  ["#fc8d59", "50 to 100"],
+  ["#d7301f", "100 to 200"],
+  ["#7f0000", "> 200"],
+];
+
+const STAR_SVG =
+  "data:image/svg+xml;charset=utf-8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="${STAR_YELLOW}" stroke="#000" stroke-width="1.1" d="M12 2.2l2.7 6.4 6.9.6-5.2 4.5 1.6 6.7L12 16.8 6 20.4l1.6-6.7L2.4 9.2l6.9-.6z"/></svg>`
+  );
 
 const bust = (url) => `${url}${url.includes("?") ? "&" : "?"}v=${ASSET}`;
 const fmtPct = (x) => `${(100 * x).toFixed(1)}%`;
@@ -21,6 +43,17 @@ const fmtPeople = (n) =>
 
 const RASTER = {
   gray: {
+    tiles: [
+      bust(
+        "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+      ),
+    ],
+    labels: bust(
+      "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+    ),
+    maxzoom: 16,
+  },
+  dark: {
     tiles: [
       bust(
         "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
@@ -54,21 +87,20 @@ const RASTER = {
 
 const TOUR_STEPS = [
   {
-    title: "Contents panel",
-    body: "Pick a city, read the headline scores, toggle layers and colour. Hide the panel anytime with ☰ — the map resizes.",
+    title: "Results-plate stack",
+    body: "People change (GHS-POP 2020−1990), zone rings, LGA lines, study outline and the yellow founding-centre star — the same symbology as the print plates.",
   },
   {
-    title: "Bookmarks and Locate",
-    body: "Bookmarks jump to Nigeria or each city. Locate opens the nearest study city to where you are.",
+    title: "Contents and bookmarks",
+    body: "Hide the panel with ☰. Bookmarks and Locate jump cities. Gray (plates) is the Esri light-gray base used in print.",
   },
   {
-    title: "Basemap and share",
-    body: "Gray, Streets, Buildings 2.5D or Imagery — also on phones. Link copies a URL for this city, colour and basemap. Story mode scrolls the argument.",
+    title: "Story and share",
+    body: "Story mode scrolls the argument. Link copies this city and basemap. Skip the tour anytime — it will not nag.",
   },
 ];
 
 const els = {
-  panel: document.getElementById("layers-panel"),
   menu: document.getElementById("menu-toggle"),
   panelClose: document.getElementById("panel-close"),
   fab: document.getElementById("layers-fab"),
@@ -79,7 +111,6 @@ const els = {
   searchOut: document.getElementById("search-results"),
   basemap: document.getElementById("basemap-select"),
   basemapMobile: document.getElementById("basemap-select-mobile"),
-  theme: document.getElementById("theme-select"),
   bookmarks: document.getElementById("bookmark-list"),
   legend: document.getElementById("legend"),
   caption: document.getElementById("map-caption"),
@@ -98,7 +129,7 @@ const els = {
   tourSkip: document.getElementById("tour-skip"),
   tourScrim: document.getElementById("tour-scrim"),
   layers: {
-    zones: document.getElementById("lyr-zones"),
+    change: document.getElementById("lyr-change"),
     rings: document.getElementById("lyr-rings"),
     lgas: document.getElementById("lyr-lgas"),
     places: document.getElementById("lyr-places"),
@@ -111,22 +142,19 @@ const params = new URLSearchParams(location.search);
 let city = ["lagos", "kano", "ibadan", "kaduna", "onitsha"].includes(params.get("city"))
   ? params.get("city")
   : "lagos";
-let basemap = ["gray", "streets", "color", "imagery"].includes(params.get("bm"))
+let basemap = ["gray", "dark", "streets", "color", "imagery"].includes(params.get("bm"))
   ? params.get("bm")
   : "gray";
-let colour = ["zones", "share", "change"].includes(params.get("colour"))
-  ? params.get("colour")
-  : "zones";
 let storyMode = params.get("story") === "1";
 let meta = null;
 let searchIndex = [];
 let popup = null;
 let activeChapter = -1;
+let dataCache = null;
 
 els.city.value = city;
 els.basemap.value = basemap;
 els.basemapMobile.value = basemap;
-els.theme.value = colour;
 document.body.classList.add("panel-open");
 if (params.get("theme") === "light") {
   document.documentElement.classList.remove("theme-dark");
@@ -156,7 +184,12 @@ function rasterStyle(key) {
     };
     layers.push({ id: "basemap-labels", type: "raster", source: "labels" });
   }
-  return { version: 8, sources, layers, glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf" };
+  return {
+    version: 8,
+    sources,
+    layers,
+    glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+  };
 }
 
 const map = new maplibregl.Map({
@@ -198,7 +231,6 @@ function writeUrl() {
   const q = new URLSearchParams();
   if (city !== "lagos") q.set("city", city);
   if (basemap !== "gray") q.set("bm", basemap);
-  if (colour !== "zones") q.set("colour", colour);
   if (storyMode) q.set("story", "1");
   if (document.documentElement.classList.contains("theme-light")) q.set("theme", "light");
   const qs = q.toString();
@@ -210,91 +242,68 @@ function cityFilter(field = "city") {
 }
 
 function applyFilters() {
-  if (!map.getLayer("zones-fill")) return;
-  map.setFilter("zones-fill", cityFilter());
-  map.setFilter("zones-outline", cityFilter());
-  map.setFilter("rings", ["all", ["==", ["get", "slug"], city], ["==", ["get", "zone"], "central"]]);
+  if (!map.getLayer("outline")) return;
+  if (map.getLayer("lgas-line")) map.setFilter("lgas-line", cityFilter());
+  if (map.getLayer("lgas-hit")) map.setFilter("lgas-hit", cityFilter());
+  if (map.getLayer("rings")) {
+    map.setFilter("rings", ["all", ["==", ["get", "slug"], city], ["==", ["get", "zone"], "central"]]);
+  }
   if (map.getLayer("rings-dash")) {
     map.setFilter("rings-dash", ["all", ["==", ["get", "slug"], city], ["==", ["get", "zone"], "intermediate"]]);
   }
   if (map.getLayer("rings-dot")) {
     map.setFilter("rings-dot", ["all", ["==", ["get", "slug"], city], ["==", ["get", "zone"], "distant"]]);
   }
-  map.setFilter("lgas-line", cityFilter());
-  map.setFilter("lgas-fill", cityFilter());
-  map.setFilter("places", cityFilter());
-  map.setFilter("centres", ["==", ["get", "slug"], city]);
-  map.setFilter("outline", ["==", ["get", "id"], city]);
+  if (map.getLayer("places")) map.setFilter("places", cityFilter());
+  if (map.getLayer("centres")) map.setFilter("centres", ["==", ["get", "slug"], city]);
+  if (map.getLayer("centre-label")) map.setFilter("centre-label", ["==", ["get", "slug"], city]);
+  if (map.getLayer("outline")) map.setFilter("outline", ["==", ["get", "id"], city]);
 }
 
-function zoneColorExpr() {
-  if (colour === "zones") {
-    return [
-      "match",
-      ["get", "zone"],
-      "central",
-      ZONE_COLORS.central,
-      "intermediate",
-      ZONE_COLORS.intermediate,
-      "distant",
-      ZONE_COLORS.distant,
-      "peri-urban",
-      ZONE_COLORS["peri-urban"],
-      "#888",
-    ];
-  }
-  if (colour === "share") {
-    return [
-      "interpolate",
-      ["linear"],
-      ["coalesce", ["get", "share_2020"], 0],
-      0.15,
-      "#edf8fb",
-      0.25,
-      "#b2e2e2",
-      0.35,
-      "#66c2a4",
-      0.45,
-      "#2ca25f",
-      0.55,
-      "#006d2c",
-    ];
-  }
-  return [
-    "interpolate",
-    ["linear"],
-    ["coalesce", ["get", "change"], 0],
-    0,
-    "#f7fcf5",
-    200000,
-    "#c7e9c0",
-    500000,
-    "#74c476",
-    1000000,
-    "#238b45",
-    1500000,
-    "#005a32",
-  ];
-}
-
-function paintZones() {
-  if (!map.getLayer("zones-fill")) return;
-  map.setPaintProperty("zones-fill", "fill-color", zoneColorExpr());
-  map.setPaintProperty("zones-fill", "fill-opacity", 0.72);
-  renderLegend();
+function setChangeOverlay(slug) {
+  const spec = meta.change?.[slug];
+  if (!spec) return;
+  if (map.getLayer("change")) map.removeLayer("change");
+  if (map.getSource("change")) map.removeSource("change");
+  map.addSource("change", {
+    type: "image",
+    url: `./data/change/${slug}.png?v=${ASSET}`,
+    coordinates: spec.coordinates,
+  });
+  const before = map.getLayer("lgas-line")
+    ? "lgas-line"
+    : map.getLayer("rings")
+      ? "rings"
+      : map.getLayer("outline")
+        ? "outline"
+        : undefined;
+  map.addLayer(
+    {
+      id: "change",
+      type: "raster",
+      source: "change",
+      paint: { "raster-opacity": 0.92, "raster-fade-duration": 0 },
+    },
+    before
+  );
+  map.setLayoutProperty(
+    "change",
+    "visibility",
+    els.layers.change.checked ? "visible" : "none"
+  );
 }
 
 function setLayerVisibility() {
   const mapLayers = {
-    zones: ["zones-fill", "zones-outline"],
+    change: ["change"],
     rings: ["rings", "rings-dash", "rings-dot"],
-    lgas: ["lgas-line", "lgas-fill"],
+    lgas: ["lgas-line", "lgas-hit"],
     places: ["places"],
-    centres: ["centres"],
+    centres: ["centres", "centre-label"],
     outline: ["outline"],
   };
   Object.entries(mapLayers).forEach(([key, ids]) => {
-    const on = els.layers[key].checked;
+    const on = els.layers[key]?.checked;
     ids.forEach((id) => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
     });
@@ -303,14 +312,15 @@ function setLayerVisibility() {
 
 function renderScores() {
   const c = meta.cities[city];
-  els.blurb.textContent = `${c.name} · founding centre: ${c.centre}. People ${fmtPeople(c.people_1990)} → ${fmtPeople(c.people_2020)}.`;
+  const short = meta.centre_short?.[city] || c.centre;
+  els.blurb.textContent = `${c.name} · founding centre: ${short}. People ${fmtPeople(c.people_1990)} → ${fmtPeople(c.people_2020)}.`;
   els.scores.innerHTML = `
     <div class="score-card"><span>Central share</span><strong>${fmtPct(c.central_share_1990)} → ${fmtPct(c.central_share_2020)}</strong></div>
     <div class="score-card"><span>φ (expected)</span><strong>${fmtPhi(c.phi)} (${fmtPhi(c.phi_fit)})</strong></div>
     <div class="score-card"><span>People 1990</span><strong>${fmtPeople(c.people_1990)}</strong></div>
     <div class="score-card"><span>People 2020</span><strong>${fmtPeople(c.people_2020)}</strong></div>
   `;
-  els.caption.textContent = `${c.name} · φ ${fmtPhi(c.phi)} (fit ${fmtPhi(c.phi_fit)}) · central ${fmtPct(c.central_share_2020)}`;
+  els.caption.textContent = `${c.name} · people gained/lost per 100 m · φ ${fmtPhi(c.phi)} (fit ${fmtPhi(c.phi_fit)})`;
 }
 
 function renderBookmarks() {
@@ -319,11 +329,10 @@ function renderBookmarks() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = b.name;
-    btn.dataset.id = b.id;
     if (b.id === city) btn.classList.add("is-active");
     btn.addEventListener("click", () => {
       if (b.id === "nigeria") {
-        map.easeTo({ center: b.center, zoom: b.zoom, pitch: b.pitch || 0, bearing: b.bearing || 0, duration: 1200 });
+        map.easeTo({ center: b.center, zoom: b.zoom, pitch: 0, bearing: 0, duration: 1200 });
         return;
       }
       setCity(b.id, true);
@@ -333,48 +342,33 @@ function renderBookmarks() {
 }
 
 function renderLegend() {
-  if (colour === "zones") {
-    els.legend.innerHTML = ["central", "intermediate", "distant", "peri-urban"]
-      .map(
-        (z) =>
-          `<div class="legend-row"><span class="swatch" style="background:${ZONE_COLORS[z]}"></span>${z}</div>`
-      )
-      .join("");
-    return;
-  }
-  if (colour === "share") {
-    els.legend.innerHTML = [
-      ["#edf8fb", "15%"],
-      ["#b2e2e2", "25%"],
-      ["#66c2a4", "35%"],
-      ["#2ca25f", "45%"],
-      ["#006d2c", "55%+"],
-    ]
-      .map(
-        ([c, t]) =>
-          `<div class="legend-row"><span class="swatch" style="background:${c}"></span>Central share ${t}</div>`
-      )
-      .join("");
-    return;
-  }
-  els.legend.innerHTML = [
-    ["#f7fcf5", "+0"],
-    ["#c7e9c0", "+0.2 M"],
-    ["#74c476", "+0.5 M"],
-    ["#238b45", "+1.0 M"],
-    ["#005a32", "+1.5 M"],
-  ]
-    .map(
-      ([c, t]) =>
-        `<div class="legend-row"><span class="swatch" style="background:${c}"></span>People change ${t}</div>`
-    )
-    .join("");
+  const changeRows = CHANGE_LEGEND.map(
+    ([c, t]) =>
+      `<div class="legend-row"><span class="swatch" style="background:${c}"></span>${t}</div>`
+  ).join("");
+  els.legend.innerHTML = `
+    <div class="legend-title">People gained per square</div>
+    ${changeRows}
+    <div class="legend-title">Edges</div>
+    <div class="legend-row"><span class="swatch" style="background:${ZONE_GREENS.central}"></span>Central zone edge</div>
+    <div class="legend-row"><span class="swatch" style="background:${ZONE_GREENS.intermediate}"></span>Intermediate zone edge</div>
+    <div class="legend-row"><span class="swatch" style="background:${ZONE_GREENS.distant}"></span>Distant zone edge</div>
+    <div class="legend-row"><span class="swatch" style="background:transparent;border:2px solid ${EDGE}"></span>Study area</div>
+    <div class="legend-row"><span class="swatch" style="background:transparent;border:2px solid ${LGA_LINE}"></span>Local government area</div>
+    <div class="legend-row"><span class="swatch" style="background:${STAR_YELLOW};border-radius:50%"></span>Founding centre</div>
+  `;
 }
 
 function flyCity(slug, animated = true) {
   const v = meta.cities[slug].view;
-  const pitch = basemap === "color" ? Math.max(v.pitch, 40) : storyMode ? v.pitch : Math.min(v.pitch, 20);
-  const opts = { center: v.center, zoom: v.zoom, pitch, bearing: v.bearing, duration: animated ? 1200 : 0 };
+  const pitch = basemap === "color" ? Math.max(v.pitch, 40) : storyMode ? v.pitch : 0;
+  const opts = {
+    center: v.center,
+    zoom: v.zoom,
+    pitch,
+    bearing: basemap === "color" || storyMode ? v.bearing : 0,
+    duration: animated ? 1200 : 0,
+  };
   if (animated) map.easeTo(opts);
   else map.jumpTo(opts);
 }
@@ -383,6 +377,8 @@ function setCity(slug, fly = true) {
   city = slug;
   els.city.value = slug;
   applyFilters();
+  setChangeOverlay(slug);
+  setLayerVisibility();
   renderScores();
   renderBookmarks();
   writeUrl();
@@ -394,31 +390,18 @@ function addThematic(data) {
     if (map.getSource(id)) map.getSource(id).setData(source);
     else map.addSource(id, { type: "geojson", data: source });
   };
-  ensure("zones", data.zones);
   ensure("rings", data.rings);
   ensure("lgas", data.lgas);
   ensure("places", data.places);
   ensure("centres", data.centres);
   ensure("cities", data.cities);
 
-  const add = (layer) => {
-    if (!map.getLayer(layer.id)) map.addLayer(layer);
+  const add = (layer, beforeId) => {
+    if (!map.getLayer(layer.id)) map.addLayer(layer, beforeId);
   };
 
   add({
-    id: "zones-fill",
-    type: "fill",
-    source: "zones",
-    paint: { "fill-color": ZONE_COLORS.central, "fill-opacity": 0.72 },
-  });
-  add({
-    id: "zones-outline",
-    type: "line",
-    source: "zones",
-    paint: { "line-color": "#d7e4ea", "line-width": 0.6, "line-opacity": 0.55 },
-  });
-  add({
-    id: "lgas-fill",
+    id: "lgas-hit",
     type: "fill",
     source: "lgas",
     paint: { "fill-color": "#000", "fill-opacity": 0.01 },
@@ -427,96 +410,127 @@ function addThematic(data) {
     id: "lgas-line",
     type: "line",
     source: "lgas",
-    paint: { "line-color": "#9aa7a3", "line-width": 0.7, "line-opacity": 0.75 },
+    paint: {
+      "line-color": LGA_LINE,
+      "line-width": 0.9,
+      "line-opacity": 0.92,
+    },
   });
   add({
     id: "rings",
     type: "line",
     source: "rings",
     paint: {
-      "line-color": [
-        "match",
-        ["get", "zone"],
-        "central",
-        ZONE_COLORS.central,
-        "intermediate",
-        ZONE_COLORS.intermediate,
-        "distant",
-        ZONE_COLORS.distant,
-        "#888",
-      ],
-      "line-width": ["match", ["get", "zone"], "central", 2.4, "intermediate", 1.6, 1.3],
-      "line-opacity": 0.95,
+      "line-color": ZONE_GREENS.central,
+      "line-width": 2.2,
+      "line-opacity": 1,
     },
   });
-  // Dashed intermediate / dotted distant via separate filter layers
   add({
     id: "rings-dash",
     type: "line",
     source: "rings",
-    filter: ["==", ["get", "zone"], "intermediate"],
     paint: {
-      "line-color": ZONE_COLORS.intermediate,
-      "line-width": 1.6,
-      "line-dasharray": [2, 1.2],
+      "line-color": ZONE_GREENS.intermediate,
+      "line-width": 1.8,
+      "line-dasharray": [2.2, 1.4],
     },
   });
   add({
     id: "rings-dot",
     type: "line",
     source: "rings",
-    filter: ["==", ["get", "zone"], "distant"],
     paint: {
-      "line-color": ZONE_COLORS.distant,
-      "line-width": 1.3,
-      "line-dasharray": [0.8, 1.4],
+      "line-color": ZONE_GREENS.distant,
+      "line-width": 1.6,
+      "line-dasharray": [0.9, 1.5],
     },
   });
   add({
     id: "outline",
     type: "line",
     source: "cities",
-    paint: { "line-color": "#e8f4f2", "line-width": 1.8, "line-opacity": 0.95 },
+    paint: {
+      "line-color": EDGE,
+      "line-width": 2.0,
+      "line-opacity": 1,
+    },
   });
   add({
     id: "places",
     type: "symbol",
-    source: "places",
+    source: "lgas",
     layout: {
-      "text-field": ["get", "name"],
-      "text-size": 11,
+      "text-field": ["get", "lga_name"],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 9, 10, 12, 11.5],
       "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
       "text-optional": true,
-      "symbol-sort-key": ["length", ["get", "name"]],
+      "text-padding": 6,
+      "symbol-sort-key": ["length", ["get", "lga_name"]],
     },
     paint: {
-      "text-color": "#e8f4f2",
-      "text-halo-color": "#071018",
-      "text-halo-width": 1.4,
+      "text-color": PLACE_INK,
+      "text-halo-color": PLACE_HALO,
+      "text-halo-width": 1.2,
     },
-    minzoom: 9.5,
-  });
-  add({
-    id: "centres",
-    type: "circle",
-    source: "centres",
-    paint: {
-      "circle-radius": 6,
-      "circle-color": "#5ec4ba",
-      "circle-stroke-width": 2,
-      "circle-stroke-color": "#071018",
-    },
+    minzoom: 9.0,
   });
 
+  if (!map.hasImage("centre-star")) {
+    const img = new Image(48, 48);
+    img.onload = () => {
+      if (!map.hasImage("centre-star")) map.addImage("centre-star", img, { pixelRatio: 2 });
+      addCentreLayers();
+    };
+    img.src = STAR_SVG;
+  } else {
+    addCentreLayers();
+  }
+
+  function addCentreLayers() {
+    add({
+      id: "centres",
+      type: "symbol",
+      source: "centres",
+      layout: {
+        "icon-image": "centre-star",
+        "icon-size": 0.55,
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+      },
+    });
+    add({
+      id: "centre-label",
+      type: "symbol",
+      source: "centres",
+      layout: {
+        "text-field": ["get", "name"],
+        "text-size": 12,
+        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+        "text-offset": [0, 1.4],
+        "text-anchor": "top",
+        "text-optional": true,
+        "text-allow-overlap": false,
+      },
+      paint: {
+        "text-color": PLACE_INK,
+        "text-halo-color": PLACE_HALO,
+        "text-halo-width": 1.4,
+      },
+    });
+    applyFilters();
+    setLayerVisibility();
+  }
+
   applyFilters();
-  paintZones();
+  setChangeOverlay(city);
   setLayerVisibility();
 }
 
 async function loadData() {
+  if (dataCache) return dataCache;
   const opts = { cache: "no-store" };
-  const [zones, rings, lgas, places, centres, cities, m, search] = await Promise.all([
-    fetch(`./data/zones.geojson?v=${ASSET}`, opts).then((r) => r.json()),
+  const [rings, lgas, places, centres, cities, m, search] = await Promise.all([
     fetch(`./data/zone_rings.geojson?v=${ASSET}`, opts).then((r) => r.json()),
     fetch(`./data/lgas.geojson?v=${ASSET}`, opts).then((r) => r.json()),
     fetch(`./data/places.geojson?v=${ASSET}`, opts).then((r) => r.json()),
@@ -527,7 +541,8 @@ async function loadData() {
   ]);
   meta = m;
   searchIndex = search;
-  return { zones, rings, lgas, places, centres, cities };
+  dataCache = { rings, lgas, places, centres, cities };
+  return dataCache;
 }
 
 async function switchBasemap(key) {
@@ -537,7 +552,7 @@ async function switchBasemap(key) {
   const cam = {
     center: map.getCenter(),
     zoom: map.getZoom(),
-    pitch: key === "color" ? 45 : map.getPitch(),
+    pitch: key === "color" ? 45 : 0,
     bearing: map.getBearing(),
   };
   const data = await loadData();
@@ -552,12 +567,7 @@ async function switchBasemap(key) {
 els.basemap.addEventListener("change", () => switchBasemap(els.basemap.value));
 els.basemapMobile.addEventListener("change", () => switchBasemap(els.basemapMobile.value));
 els.city.addEventListener("change", () => setCity(els.city.value, true));
-els.theme.addEventListener("change", () => {
-  colour = els.theme.value;
-  paintZones();
-  writeUrl();
-});
-Object.values(els.layers).forEach((el) => el.addEventListener("change", setLayerVisibility));
+Object.values(els.layers).forEach((el) => el?.addEventListener("change", setLayerVisibility));
 
 els.search.addEventListener("input", () => {
   const q = els.search.value.trim().toLowerCase();
@@ -566,18 +576,18 @@ els.search.addEventListener("input", () => {
     els.searchOut.innerHTML = "";
     return;
   }
-  const hits = searchIndex
-    .filter((s) => s.name.toLowerCase().includes(q) && (!city || s.city === city || s.kind === "centre"))
-    .slice(0, 12);
+  const prefer = searchIndex.filter(
+    (s) => s.name.toLowerCase().includes(q) && (s.city === city || s.kind === "centre")
+  );
   const loose =
-    hits.length > 0
-      ? hits
+    prefer.length > 0
+      ? prefer.slice(0, 12)
       : searchIndex.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 12);
   els.searchOut.hidden = loose.length === 0;
   els.searchOut.innerHTML = loose
     .map(
-      (h, i) =>
-        `<button type="button" class="search-hit" data-i="${i}" role="option">${h.name} <span style="color:var(--muted)">· ${h.city}</span></button>`
+      (h) =>
+        `<button type="button" class="search-hit">${h.name} <span style="color:var(--muted)">· ${h.city}</span></button>`
     )
     .join("");
   [...els.searchOut.querySelectorAll(".search-hit")].forEach((btn, i) => {
@@ -591,11 +601,7 @@ els.search.addEventListener("input", () => {
 });
 
 els.locate.addEventListener("click", () => {
-  if (!navigator.geolocation) {
-    els.locate.textContent = "No GPS";
-    setTimeout(() => (els.locate.textContent = "Locate"), 1200);
-    return;
-  }
+  if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const { longitude: lon, latitude: lat } = pos.coords;
@@ -639,18 +645,7 @@ els.themeToggle.addEventListener("click", () => {
 });
 
 function bindPopup() {
-  map.on("click", "zones-fill", (e) => {
-    const f = e.features?.[0];
-    if (!f) return;
-    const p = f.properties;
-    const html = `<strong>${p.zone}</strong><br/>People 1990: ${fmtPeople(+p.people_1990 || 0)}<br/>People 2020: ${fmtPeople(+p.people_2020 || 0)}<br/>Share 2020: ${p.share_2020 != null ? fmtPct(+p.share_2020) : "—"}<br/>Change: ${p.change != null ? fmtPeople(+p.change) : "—"}`;
-    if (popup) popup.remove();
-    popup = new maplibregl.Popup({ maxWidth: "240px", anchor: "bottom", offset: 12 })
-      .setLngLat(e.lngLat)
-      .setHTML(html)
-      .addTo(map);
-  });
-  map.on("click", "lgas-fill", (e) => {
+  map.on("click", "lgas-hit", (e) => {
     const f = e.features?.[0];
     if (!f) return;
     const p = f.properties;
@@ -660,11 +655,10 @@ function bindPopup() {
       .setHTML(`<strong>${p.lga_name}</strong><br/>${meta.cities[p.city]?.name || p.city}`)
       .addTo(map);
   });
-  map.on("mouseenter", "zones-fill", () => (map.getCanvas().style.cursor = "pointer"));
-  map.on("mouseleave", "zones-fill", () => (map.getCanvas().style.cursor = ""));
+  map.on("mouseenter", "lgas-hit", () => (map.getCanvas().style.cursor = "pointer"));
+  map.on("mouseleave", "lgas-hit", () => (map.getCanvas().style.cursor = ""));
 }
 
-/* Story mode */
 chapters.forEach((ch, i) => {
   const section = document.createElement("section");
   section.className = "chapter";
@@ -678,12 +672,10 @@ function setStory(on) {
   storyMode = on;
   els.scrolly.hidden = !on;
   els.storyBtn.textContent = on ? "Explore" : "Story";
-  document.body.classList.toggle("story-on", on);
   if (on) setPanel(false);
   writeUrl();
   resizeMap();
 }
-
 els.storyBtn.addEventListener("click", () => setStory(!storyMode));
 
 const chapterObserver = new IntersectionObserver(
@@ -699,17 +691,21 @@ const chapterObserver = new IntersectionObserver(
     document.querySelectorAll(".chapter").forEach((el, i) => el.classList.toggle("is-active", i === idx));
     const ch = chapters[idx];
     els.caption.textContent = ch.caption;
-    if (ch.highlight && ch.highlight !== "all" && meta.cities[ch.highlight]) {
-      setCity(ch.highlight, true);
-    } else if (ch.highlight === "all") {
-      map.easeTo({ center: ch.view.center, zoom: ch.view.zoom, pitch: ch.view.pitch, bearing: ch.view.bearing, duration: 1200 });
+    if (ch.highlight && ch.highlight !== "all" && meta.cities[ch.highlight]) setCity(ch.highlight, true);
+    else if (ch.highlight === "all") {
+      map.easeTo({
+        center: ch.view.center,
+        zoom: ch.view.zoom,
+        pitch: ch.view.pitch,
+        bearing: ch.view.bearing,
+        duration: 1200,
+      });
     }
   },
   { rootMargin: "-35% 0px -45% 0px", threshold: [0.15, 0.4, 0.7] }
 );
 document.querySelectorAll(".chapter").forEach((el) => chapterObserver.observe(el));
 
-/* Tour */
 let tourStep = 0;
 function closeTour(save) {
   els.tour.hidden = true;
