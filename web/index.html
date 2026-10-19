@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="theme-dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta
@@ -32,7 +32,7 @@
       rel="stylesheet"
       href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css"
     />
-    <link rel="stylesheet" href="./src/style.css?v=6" />
+    <link rel="stylesheet" href="./src/style.css?v=7" />
   </head>
   <body>
     <header class="topbar">
@@ -76,7 +76,7 @@
         <button type="button" id="tour-btn" title="How to use this map">?</button>
         <button type="button" id="locate-btn" title="My location">Locate</button>
         <button type="button" id="share-btn" title="Copy link to this view">Link</button>
-        <button type="button" id="theme-toggle" title="Switch appearance">Light</button>
+        <button type="button" id="theme-toggle" title="Switch appearance">Dark</button>
         <a
           class="paper-link"
           href="./paper/where_the_centre_holds.pdf"
@@ -97,6 +97,13 @@
         <button type="button" class="icon-btn" id="panel-close" title="Hide contents">✕</button>
       </div>
       <div class="panel-body">
+        <div class="panel-top">
+          <p class="map-summary" id="map-summary">
+            Interactive results map for five Nigerian cities: people gained or lost per 100&nbsp;m square (1990–2020), remoteness zone rings, local government areas, and founding centres. Same symbology as the print plates.
+          </p>
+          <a class="paper-btn" href="./paper/where_the_centre_holds.pdf" target="_blank" rel="noopener">Download the scientific paper (PDF)</a>
+        </div>
+
         <label class="field">
           City
           <select id="city-select">
@@ -111,8 +118,8 @@
         <div class="score-grid" id="score-grid"></div>
 
         <label class="field">
-          Find a place
-          <input id="place-search" type="search" placeholder="Mapo Hill, Ikeja, Sabon Gari…" autocomplete="off" />
+          Find an LGA, place or centre
+          <input id="place-search" type="search" placeholder="Ikeja, Mapo Hill, Gidan Rumfa…" autocomplete="off" />
         </label>
         <div id="search-results" class="search-results" hidden role="listbox"></div>
 
@@ -133,9 +140,16 @@
         </div>
 
         <div class="block">
+          <h3>Local government areas</h3>
+          <p class="fine">Click a name to fly there. Tap an LGA on the map for its popup.</p>
+          <div class="lga-list" id="lga-list" role="list"></div>
+        </div>
+
+        <div class="block">
           <h3>Layers</h3>
-          <p class="fine">Same stack as the results plates: people change, zone edges, LGAs, study outline, founding centre.</p>
+          <p class="fine">Same stack as the results plates. The 100&nbsp;m people-change layer is a raster (no popup); every vector layer has a popup.</p>
           <label class="check"><input type="checkbox" id="lyr-change" checked /> People change 1990–2020</label>
+          <label class="check"><input type="checkbox" id="lyr-zones" checked /> Remoteness zones</label>
           <label class="check"><input type="checkbox" id="lyr-rings" checked /> Zone rings</label>
           <label class="check"><input type="checkbox" id="lyr-lgas" checked /> Local government areas</label>
           <label class="check"><input type="checkbox" id="lyr-places" checked /> LGA names</label>
@@ -155,9 +169,6 @@
           </p>
           <p>
             Search a place, use bookmarks, or Locate to open the nearest study city. Story mode scrolls the argument; Contents stays for exploration.
-          </p>
-          <p>
-            <a href="./paper/where_the_centre_holds.pdf" target="_blank" rel="noopener">Download the academic paper (PDF)</a>
           </p>
           <p>Map by Wisdom Akpabio. People from GHS-POP. Outlines from geoBoundaries LGAs.</p>
         </details>
@@ -197,6 +208,6 @@
     </div>
 
     <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
-    <script type="module" src="./src/main.js?v=6"></script>
+    <script type="module" src="./src/main.js?v=7"></script>
   </body>
 </html>
