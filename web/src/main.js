@@ -1,7 +1,7 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "17";
+const ASSET = "19";
 const CREDIT = "© OpenStreetMap · Esri · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
@@ -286,15 +286,18 @@ function applyFilters() {
   if (map.getLayer("places")) map.setFilter("places", cityFilter());
   if (map.getLayer("zones-fill")) map.setFilter("zones-fill", cityFilter());
   if (map.getLayer("zones-line")) map.setFilter("zones-line", cityFilter());
-  if (map.getLayer("rings")) {
-    map.setFilter("rings", ["all", ["==", ["get", "slug"], city], ["==", ["get", "zone"], "central"]]);
-  }
-  if (map.getLayer("rings-dash")) {
-    map.setFilter("rings-dash", ["all", ["==", ["get", "slug"], city], ["==", ["get", "zone"], "intermediate"]]);
-  }
-  if (map.getLayer("rings-dot")) {
-    map.setFilter("rings-dot", ["all", ["==", ["get", "slug"], city], ["==", ["get", "zone"], "distant"]]);
-  }
+  const ringFilters = {
+    rings: ["central"],
+    "rings-casing": ["central"],
+    "rings-dash": ["intermediate"],
+    "rings-dash-casing": ["intermediate"],
+    "rings-dot": ["distant"],
+    "rings-dot-casing": ["distant"],
+  };
+  Object.entries(ringFilters).forEach(([id, zones]) => {
+    if (!map.getLayer(id)) return;
+    map.setFilter(id, ["all", ["==", ["get", "slug"], city], ["==", ["get", "zone"], zones[0]]]);
+  });
   if (map.getLayer("ring-labels")) map.setFilter("ring-labels", ["==", ["get", "slug"], city]);
   if (map.getLayer("centres")) map.setFilter("centres", ["==", ["get", "slug"], city]);
   if (map.getLayer("centre-label")) map.setFilter("centre-label", ["==", ["get", "slug"], city]);
@@ -340,7 +343,7 @@ function setLayerVisibility() {
   const mapLayers = {
     change: ["change"],
     zones: ["zones-fill", "zones-line"],
-    rings: ["rings", "rings-dash", "rings-dot", "ring-labels"],
+    rings: ["rings-casing", "rings-dash-casing", "rings-dot-casing", "rings", "rings-dash", "rings-dot", "ring-labels"],
     lgas: ["lgas-line", "lgas-hit"],
     places: ["places"],
     centres: ["centres", "centre-label"],
@@ -411,27 +414,115 @@ function renderLgaList() {
         lat = ring.reduce((s, c) => s + c[1], 0) / ring.length;
       }
       map.easeTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 11.2), duration: 900 });
-      if (popup) popup.remove();
-      popup = new maplibregl.Popup({ maxWidth: "240px", anchor: "bottom", offset: 14 })
-        .setLngLat([lon, lat])
-        .setHTML(lgaPopupHtml(p))
-        .addTo(map);
+      showPopup([lon, lat], lgaPopupHtml(p));
     });
     els.lgaList.appendChild(btn);
   });
 }
 
+function popupShell(kicker, title, body) {
+  return `<div class="pop"><p class="pop-kicker">${kicker}</p><strong>${title}</strong>${body}</div>`;
+}
+
 function lgaPopupHtml(p) {
-  const cityName = meta.cities[p.city]?.name || p.city;
-  return `<strong>${p.lga_name}</strong><br/>Local government area in ${cityName}<br/>Area: ${p.km2} km²<br/>Distance from founding centre: ${p.dist_km} km`;
+  const c = meta.cities[p.city] || {};
+  const cityName = c.name || p.city;
+  const centre = meta.centre_short?.[p.city] || c.centre || "the founding centre";
+  const dist = p.dist_km != null ? Number(p.dist_km).toFixed(1) : "—";
+  return popupShell(
+    "Local government area",
+    p.lga_name,
+    `<p class="pop-lead"><b>${p.lga_name}</b> is one of the LGAs that make up <b>${cityName}</b> in this study (the paper’s building block — not a ward).</p>
+    <dl class="pop-dl">
+      <dt>City</dt><dd>${cityName}</dd>
+      <dt>Founding centre</dt><dd>${centre}</dd>
+      <dt>Area</dt><dd>${p.km2} km² inside the study outline</dd>
+      <dt>Distance from centre</dt><dd>${dist} km from ${centre} to this LGA’s typical ground</dd>
+    </dl>
+    <p class="pop-note">Tap elsewhere on the map for zones, the founding centre, or the study outline.</p>`
+  );
 }
 
 function zonePopupHtml(p) {
-  const cityName = meta.cities[p.city]?.name || p.city;
+  const c = meta.cities[p.city] || {};
+  const cityName = c.name || p.city;
+  const centre = meta.centre_short?.[p.city] || c.centre || "the founding centre";
+  const zone = String(p.zone || "").replace(/-/g, " ");
+  const title = p.label || `${zone} zone`;
   const share = p.share_2020 != null ? fmtPct(+p.share_2020) : "—";
   const share0 = p.share_1990 != null ? fmtPct(+p.share_1990) : "—";
-  const title = p.label || `${String(p.zone).replace(/-/g, " ")} zone`;
-  return `<strong>${title}</strong><br/>${cityName}<br/>People in 1990: ${fmtPeople(+p.people_1990 || 0)}<br/>People in 2020: ${fmtPeople(+p.people_2020 || 0)}<br/>Share: ${share0} → ${share}<br/>Change: ${p.change != null ? fmtPeople(+p.change) : "—"}`;
+  const km = p.km != null ? Number(p.km).toFixed(1) : null;
+  const blurb =
+    zone === "central"
+      ? `Closest band to ${centre} (remoteness under 3). The green solid ring marks its outer edge${km ? ` at about ${km} km` : ""}.`
+      : zone === "intermediate"
+        ? `Middle band (remoteness 3–5). The dashed green ring is its outer edge${km ? ` at about ${km} km` : ""}.`
+        : zone === "distant"
+          ? `Outer band still counted as urban (remoteness 5–9.3). The dotted green ring is its outer edge${km ? ` at about ${km} km` : ""}.`
+          : `Ground beyond the distant ring — still inside the ${cityName} LGA outline, but outside the three remoteness rings.`;
+  return popupShell(
+    "Remoteness zone",
+    title,
+    `<p class="pop-lead">${blurb}</p>
+    <dl class="pop-dl">
+      <dt>City</dt><dd>${cityName}</dd>
+      <dt>Founding centre</dt><dd>${centre}</dd>
+      <dt>People in 1990</dt><dd>${fmtPeople(+p.people_1990 || 0)}</dd>
+      <dt>People in 2020</dt><dd>${fmtPeople(+p.people_2020 || 0)}</dd>
+      <dt>Share of city</dt><dd>${share0} → ${share}</dd>
+      <dt>Change</dt><dd>${p.change != null ? fmtPeople(+p.change) : "—"} people</dd>
+    </dl>`
+  );
+}
+
+function centrePopupHtml(p) {
+  const c = meta.cities[p.slug] || {};
+  const cityName = c.name || p.slug;
+  return popupShell(
+    "Founding centre",
+    p.short || p.name,
+    `<p class="pop-lead">The historic origin used for ${cityName}’s rings and remoteness zones. Distances and φ are measured from this point.</p>
+    <dl class="pop-dl">
+      <dt>Place</dt><dd>${p.name}</dd>
+      <dt>City</dt><dd>${cityName}</dd>
+      <dt>Central share</dt><dd>${fmtPct(c.central_share_1990)} → ${fmtPct(c.central_share_2020)}</dd>
+      <dt>φ (spread)</dt><dd>${fmtPhi(c.phi)} (national fit ${fmtPhi(c.phi_fit)})</dd>
+    </dl>`
+  );
+}
+
+function cityPopupHtml(slug, c) {
+  const centre = meta.centre_short?.[slug] || c.centre;
+  return popupShell(
+    "Study area",
+    `${c.name} outline`,
+    `<p class="pop-lead">The black outline is the set of local government areas that define ${c.name} in this paper. People change, zone rings and φ are computed inside it.</p>
+    <dl class="pop-dl">
+      <dt>Founding centre</dt><dd>${centre}</dd>
+      <dt>People in 1990</dt><dd>${fmtPeople(c.people_1990)}</dd>
+      <dt>People in 2020</dt><dd>${fmtPeople(c.people_2020)}</dd>
+      <dt>Central share</dt><dd>${fmtPct(c.central_share_1990)} → ${fmtPct(c.central_share_2020)}</dd>
+      <dt>φ (spread)</dt><dd>${fmtPhi(c.phi)} (fit ${fmtPhi(c.phi_fit)})</dd>
+    </dl>`
+  );
+}
+
+function ringPopupHtml(p) {
+  const c = meta.cities[p.slug] || {};
+  const cityName = c.name || p.slug;
+  const centre = meta.centre_short?.[p.slug] || c.centre || "the founding centre";
+  const zone = String(p.zone || "").replace(/-/g, " ");
+  const km = p.km != null ? Number(p.km).toFixed(1) : "—";
+  return popupShell(
+    "Zone ring",
+    p.label || `${zone} · ${km} km`,
+    `<p class="pop-lead">Edge of the <b>${zone}</b> remoteness zone around ${centre} in ${cityName}.</p>
+    <dl class="pop-dl">
+      <dt>Radius</dt><dd>${km} km from the founding centre</dd>
+      <dt>City</dt><dd>${cityName}</dd>
+    </dl>
+    <p class="pop-note">Click inside a ring (not on the line) for people counts in that zone.</p>`
+  );
 }
 
 function renderLegend() {
@@ -553,13 +644,46 @@ function addThematic(data) {
       "line-opacity": 1,
     },
   });
+  // Light casing under rings so greens stay readable on red change pixels.
+  add({
+    id: "rings-casing",
+    type: "line",
+    source: "rings",
+    paint: {
+      "line-color": "#f7f4ee",
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5.5, 12, 7.5],
+      "line-opacity": 0.92,
+    },
+  });
+  add({
+    id: "rings-dash-casing",
+    type: "line",
+    source: "rings",
+    paint: {
+      "line-color": "#f7f4ee",
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5, 12, 7],
+      "line-opacity": 0.9,
+      "line-dasharray": [2.2, 1.4],
+    },
+  });
+  add({
+    id: "rings-dot-casing",
+    type: "line",
+    source: "rings",
+    paint: {
+      "line-color": "#f7f4ee",
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4.5, 12, 6.5],
+      "line-opacity": 0.88,
+      "line-dasharray": [0.9, 1.5],
+    },
+  });
   add({
     id: "rings",
     type: "line",
     source: "rings",
     paint: {
       "line-color": ZONE_GREENS.central,
-      "line-width": 2.4,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.2, 12, 4.2],
       "line-opacity": 1,
     },
   });
@@ -569,8 +693,9 @@ function addThematic(data) {
     source: "rings",
     paint: {
       "line-color": ZONE_GREENS.intermediate,
-      "line-width": 2.0,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.8, 12, 3.6],
       "line-dasharray": [2.2, 1.4],
+      "line-opacity": 1,
     },
   });
   add({
@@ -579,21 +704,27 @@ function addThematic(data) {
     source: "rings",
     paint: {
       "line-color": ZONE_GREENS.distant,
-      "line-width": 1.8,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.4, 12, 3.2],
       "line-dasharray": [0.9, 1.5],
+      "line-opacity": 1,
     },
   });
+  // One curved label per ring, following the arc.
   add({
     id: "ring-labels",
     type: "symbol",
-    source: "ring-label-pts",
+    source: "rings",
     layout: {
+      "symbol-placement": "line-center",
       "text-field": ["get", "label"],
-      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 11, 10, 12.5, 12, 14],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 12, 11, 14, 13, 15],
       "text-font": FONT_BOLD,
-      "text-anchor": "left",
-      "text-offset": [0.25, 0],
-      "text-padding": 1,
+      "text-max-angle": 40,
+      "text-padding": 2,
+      "text-letter-spacing": 0.02,
+      "text-keep-upright": true,
+      "text-rotation-alignment": "map",
+      "text-pitch-alignment": "viewport",
       "text-allow-overlap": true,
       "text-ignore-placement": true,
       "text-optional": false,
@@ -609,10 +740,10 @@ function addThematic(data) {
         ZONE_GREENS.distant,
       ],
       "text-halo-color": "#f7f4ee",
-      "text-halo-width": 2.2,
-      "text-halo-blur": 0.15,
+      "text-halo-width": 2.6,
+      "text-halo-blur": 0,
     },
-    minzoom: 7.8,
+    minzoom: 7.5,
   });
   add({
     id: "outline-hit",
@@ -825,7 +956,7 @@ els.themeToggle.addEventListener("click", () => {
 function showPopup(lngLat, html) {
   if (popup) popup.remove();
   popup = new maplibregl.Popup({
-    maxWidth: "260px",
+    maxWidth: "300px",
     anchor: "bottom",
     offset: 14,
     closeButton: true,
@@ -855,15 +986,20 @@ function bindPopup() {
   });
   hover("zones-fill");
 
+  ["rings", "rings-dash", "rings-dot"].forEach((id) => {
+    map.on("click", id, (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      e.originalEvent?.stopPropagation?.();
+      showPopup(e.lngLat, ringPopupHtml(f.properties));
+    });
+    hover(id);
+  });
+
   map.on("click", "centres", (e) => {
     const f = e.features?.[0];
     if (!f) return;
-    const p = f.properties;
-    const cityName = meta.cities[p.slug]?.name || p.slug;
-    showPopup(
-      e.lngLat,
-      `<strong>${p.short || p.name}</strong><br/>Founding centre of ${cityName}<br/>${p.name}`
-    );
+    showPopup(e.lngLat, centrePopupHtml(f.properties));
   });
   hover("centres");
 
@@ -873,10 +1009,7 @@ function bindPopup() {
     const p = f.properties;
     const c = meta.cities[p.id];
     if (!c) return;
-    showPopup(
-      e.lngLat,
-      `<strong>${c.name} study area</strong><br/>People in 1990: ${fmtPeople(c.people_1990)}<br/>People in 2020: ${fmtPeople(c.people_2020)}<br/>Central share ${fmtPct(c.central_share_1990)} → ${fmtPct(c.central_share_2020)}<br/>φ ${fmtPhi(c.phi)} (fit ${fmtPhi(c.phi_fit)})`
-    );
+    showPopup(e.lngLat, cityPopupHtml(p.id, c));
   });
   hover("outline");
 }
