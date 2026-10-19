@@ -1,7 +1,7 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "20";
+const ASSET = "21";
 const CREDIT = "© OpenStreetMap · Esri · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
@@ -433,7 +433,7 @@ function popupShell(kicker, title, body) {
   return `<div class="pop"><p class="pop-kicker">${kicker}</p><strong>${title}</strong>${body}</div>`;
 }
 
-function densifyRingCoords(coords, targetStepDeg = 0.004) {
+function densifyRingCoords(coords, targetStepDeg = 0.0025) {
   if (!Array.isArray(coords) || coords.length < 2) return coords;
   const out = [coords[0]];
   for (let i = 1; i < coords.length; i += 1) {
@@ -697,8 +697,8 @@ function addThematic(data) {
     },
     paint: {
       "line-color": LGA_LINE,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 11, 0.95, 13, 1.2],
-      "line-opacity": 0.7,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.45, 11, 0.75, 13, 0.95],
+      "line-opacity": 0.55,
     },
   });
   // Dark solid halo under each ring so greens stay crisp on red change pixels.
@@ -771,19 +771,20 @@ function addThematic(data) {
       "line-opacity": 1,
     },
   });
-  // One curved label per ring, following the densified arc.
+  // One curved label per ring — glyphs follow the densified arc.
   add({
     id: "ring-labels",
     type: "symbol",
     source: "rings",
     layout: {
-      "symbol-placement": "line-center",
+      "symbol-placement": "line",
+      "symbol-spacing": 1200,
       "text-field": ["get", "label"],
       "text-size": ["interpolate", ["linear"], ["zoom"], 8, 13, 11, 15, 13, 17],
       "text-font": FONT_BOLD,
-      "text-max-angle": 55,
+      "text-max-angle": 90,
       "text-padding": 1,
-      "text-letter-spacing": 0.04,
+      "text-letter-spacing": 0.06,
       "text-keep-upright": true,
       "text-rotation-alignment": "map",
       "text-pitch-alignment": "viewport",
@@ -802,7 +803,7 @@ function addThematic(data) {
         ZONE_GREENS.distant,
       ],
       "text-halo-color": "#f7f4ee",
-      "text-halo-width": 3.2,
+      "text-halo-width": 3.4,
       "text-halo-blur": 0,
     },
     minzoom: 7,
@@ -820,8 +821,8 @@ function addThematic(data) {
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
       "line-color": EDGE,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.35, 11, 1.85, 13, 2.25],
-      "line-opacity": 0.78,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.0, 11, 1.35, 13, 1.65],
+      "line-opacity": 0.62,
     },
   });
   add({
