@@ -1,7 +1,7 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "14";
+const ASSET = "16";
 const CREDIT = "© OpenStreetMap · Esri · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
