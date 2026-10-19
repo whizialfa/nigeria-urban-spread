@@ -1,7 +1,7 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "21";
+const ASSET = "22";
 const CREDIT = "© OpenStreetMap · Esri · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
@@ -9,15 +9,16 @@ const FONT_REG = ["Noto Sans Regular"];
 const FONT_BOLD = ["Noto Sans Bold"];
 const TOUR_KEY = "wch-tour-done";
 
-/* Plate greens, with distant darkened so rings stay readable on the change layer. */
+/* Bright web greens — plate darks wash out on the red change raster. */
 const ZONE_GREENS = {
-  central: "#00441b",
-  intermediate: "#006d2c",
-  distant: "#238b45",
+  central: "#007a33",
+  intermediate: "#1a9f4a",
+  distant: "#3dba5c",
 };
+const RING_CASING = "#fff8e7";
 const RING_HALO = "#0b120c";
-const EDGE = "#0a0a0a";
-const LGA_LINE = "#5a5048";
+const EDGE = "#2a2622";
+const LGA_LINE = "#6e655c";
 const STAR_YELLOW = "#ffd600";
 const PLACE_INK = "#1e1a16";
 const PLACE_HALO = "#fafafa";
@@ -288,10 +289,13 @@ function applyFilters() {
   if (map.getLayer("zones-fill")) map.setFilter("zones-fill", cityFilter());
   if (map.getLayer("zones-line")) map.setFilter("zones-line", cityFilter());
   const ringFilters = {
+    "rings-casing": ["central"],
     "rings-halo": ["central"],
     rings: ["central"],
+    "rings-dash-casing": ["intermediate"],
     "rings-dash-halo": ["intermediate"],
     "rings-dash": ["intermediate"],
+    "rings-dot-casing": ["distant"],
     "rings-dot-halo": ["distant"],
     "rings-dot": ["distant"],
   };
@@ -345,6 +349,9 @@ function setLayerVisibility() {
     change: ["change"],
     zones: ["zones-fill", "zones-line"],
     rings: [
+      "rings-casing",
+      "rings-dash-casing",
+      "rings-dot-casing",
       "rings-halo",
       "rings-dash-halo",
       "rings-dot-halo",
@@ -433,7 +440,7 @@ function popupShell(kicker, title, body) {
   return `<div class="pop"><p class="pop-kicker">${kicker}</p><strong>${title}</strong>${body}</div>`;
 }
 
-function densifyRingCoords(coords, targetStepDeg = 0.0025) {
+function densifyRingCoords(coords, targetStepDeg = 0.0012) {
   if (!Array.isArray(coords) || coords.length < 2) return coords;
   const out = [coords[0]];
   for (let i = 1; i < coords.length; i += 1) {
@@ -642,7 +649,30 @@ function addThematic(data) {
   ensure("cities", data.cities);
 
   const add = (layer) => {
-    if (!map.getLayer(layer.id)) map.addLayer(layer);
+    if (!map.getLayer(layer.id)) {
+      map.addLayer(layer);
+      return;
+    }
+    // Fresh paint/layout on reload so cache-bust style tweaks actually apply.
+    if (layer.paint) {
+      Object.entries(layer.paint).forEach(([k, v]) => {
+        try {
+          map.setPaintProperty(layer.id, k, v);
+        } catch (_) {
+          /* ignore unsupported keys on existing layer */
+        }
+      });
+    }
+    if (layer.layout) {
+      Object.entries(layer.layout).forEach(([k, v]) => {
+        if (k === "visibility") return;
+        try {
+          map.setLayoutProperty(layer.id, k, v);
+        } catch (_) {
+          /* ignore */
+        }
+      });
+    }
   };
 
   // Opaque city underlay — residual edge gaps show plate cream, never white basemap.
@@ -697,12 +727,48 @@ function addThematic(data) {
     },
     paint: {
       "line-color": LGA_LINE,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.45, 11, 0.75, 13, 0.95],
-      "line-opacity": 0.55,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.35, 11, 0.55, 13, 0.7],
+      "line-opacity": 0.42,
     },
   });
-  // Dark solid halo under each ring so greens stay crisp on red change pixels.
+  // Cream casing + dark halo + bright green — readable on red change and gray basemap.
   const ringLineLayout = { "line-join": "round", "line-cap": "round" };
+  const ringCasingW = ["interpolate", ["linear"], ["zoom"], 8, 11, 12, 15];
+  const ringHaloW = ["interpolate", ["linear"], ["zoom"], 8, 8, 12, 11];
+  const ringCoreW = ["interpolate", ["linear"], ["zoom"], 8, 5, 12, 7];
+  add({
+    id: "rings-casing",
+    type: "line",
+    source: "rings",
+    layout: ringLineLayout,
+    paint: {
+      "line-color": RING_CASING,
+      "line-width": ringCasingW,
+      "line-opacity": 0.95,
+    },
+  });
+  add({
+    id: "rings-dash-casing",
+    type: "line",
+    source: "rings",
+    layout: ringLineLayout,
+    paint: {
+      "line-color": RING_CASING,
+      "line-width": ringCasingW,
+      "line-opacity": 0.95,
+    },
+  });
+  add({
+    id: "rings-dot-casing",
+    type: "line",
+    source: "rings",
+    layout: ringLineLayout,
+    paint: {
+      "line-color": RING_CASING,
+      "line-width": ringCasingW,
+      "line-opacity": 0.95,
+    },
+  });
   add({
     id: "rings-halo",
     type: "line",
@@ -710,8 +776,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_HALO,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 8, 12, 11],
-      "line-opacity": 0.95,
+      "line-width": ringHaloW,
+      "line-opacity": 0.9,
     },
   });
   add({
@@ -721,8 +787,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_HALO,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 7.5, 12, 10],
-      "line-opacity": 0.95,
+      "line-width": ringHaloW,
+      "line-opacity": 0.9,
     },
   });
   add({
@@ -732,8 +798,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_HALO,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 7, 12, 9.5],
-      "line-opacity": 0.95,
+      "line-width": ringHaloW,
+      "line-opacity": 0.9,
     },
   });
   add({
@@ -743,7 +809,7 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.central,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4.5, 12, 6],
+      "line-width": ringCoreW,
       "line-opacity": 1,
     },
   });
@@ -754,8 +820,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.intermediate,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4, 12, 5.5],
-      "line-dasharray": [2.4, 1.2],
+      "line-width": ringCoreW,
+      "line-dasharray": [2.2, 1.0],
       "line-opacity": 1,
     },
   });
@@ -766,8 +832,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.distant,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.6, 12, 5],
-      "line-dasharray": [1.1, 1.2],
+      "line-width": ringCoreW,
+      "line-dasharray": [1.0, 1.0],
       "line-opacity": 1,
     },
   });
@@ -777,14 +843,13 @@ function addThematic(data) {
     type: "symbol",
     source: "rings",
     layout: {
-      "symbol-placement": "line",
-      "symbol-spacing": 1200,
+      "symbol-placement": "line-center",
       "text-field": ["get", "label"],
-      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 13, 11, 15, 13, 17],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 13, 11, 15.5, 13, 17.5],
       "text-font": FONT_BOLD,
-      "text-max-angle": 90,
-      "text-padding": 1,
-      "text-letter-spacing": 0.06,
+      "text-max-angle": 45,
+      "text-padding": 2,
+      "text-letter-spacing": 0.04,
       "text-keep-upright": true,
       "text-rotation-alignment": "map",
       "text-pitch-alignment": "viewport",
@@ -802,9 +867,9 @@ function addThematic(data) {
         ZONE_GREENS.intermediate,
         ZONE_GREENS.distant,
       ],
-      "text-halo-color": "#f7f4ee",
-      "text-halo-width": 3.4,
-      "text-halo-blur": 0,
+      "text-halo-color": RING_CASING,
+      "text-halo-width": 3.8,
+      "text-halo-blur": 0.15,
     },
     minzoom: 7,
   });
@@ -821,8 +886,8 @@ function addThematic(data) {
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
       "line-color": EDGE,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.0, 11, 1.35, 13, 1.65],
-      "line-opacity": 0.62,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.7, 11, 0.95, 13, 1.15],
+      "line-opacity": 0.38,
     },
   });
   add({
@@ -1058,6 +1123,9 @@ function popupFromFeature(f, lgaProps) {
 function bindPopup() {
   const hitLayers = [
     "centres",
+    "rings-casing",
+    "rings-dash-casing",
+    "rings-dot-casing",
     "rings-halo",
     "rings-dash-halo",
     "rings-dot-halo",
@@ -1076,6 +1144,9 @@ function bindPopup() {
     "rings-halo",
     "rings-dash-halo",
     "rings-dot-halo",
+    "rings-casing",
+    "rings-dash-casing",
+    "rings-dot-casing",
     "zones-fill",
     "lgas-hit",
     "outline",
