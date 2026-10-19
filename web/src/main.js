@@ -1,7 +1,7 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "23";
+const ASSET = "24";
 const CREDIT = "© OpenStreetMap · Esri · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
@@ -9,19 +9,18 @@ const FONT_REG = ["Noto Sans Regular"];
 const FONT_BOLD = ["Noto Sans Bold"];
 const TOUR_KEY = "wch-tour-done";
 
-/* Plate greens with a light cream casing — clean rings, readable on dark and change. */
+/* Bright greens + cream casing so rings stay clear on the red change layer. */
 const ZONE_GREENS = {
-  central: "#005a32",
-  intermediate: "#238b45",
-  distant: "#41ab5d",
+  central: "#007a33",
+  intermediate: "#1a9f4a",
+  distant: "#3dba5c",
 };
-const RING_CASING = "#f7f4ee";
-const EDGE = "#f0ebe3";
-const EDGE_HALO = "#0a0a0a";
-const LGA_LINE = "#c8bfb4";
+const RING_CASING = "#fff8e7";
+const EDGE = "#3a342e";
+const LGA_LINE = "#6e655c";
 const STAR_YELLOW = "#ffd600";
-const PLACE_INK = "#f4efe6";
-const PLACE_HALO = "#12100e";
+const PLACE_INK = "#1e1a16";
+const PLACE_HALO = "#fafafa";
 
 const CHANGE_LEGEND = [
   ["#2166ac", "≤ −25"],
@@ -303,7 +302,6 @@ function applyFilters() {
   if (map.getLayer("ring-labels")) map.setFilter("ring-labels", ["==", ["get", "slug"], city]);
   if (map.getLayer("centres")) map.setFilter("centres", ["==", ["get", "slug"], city]);
   if (map.getLayer("centre-label")) map.setFilter("centre-label", ["==", ["get", "slug"], city]);
-  if (map.getLayer("outline-halo")) map.setFilter("outline-halo", ["==", ["get", "id"], city]);
   if (map.getLayer("outline")) map.setFilter("outline", ["==", ["get", "id"], city]);
   if (map.getLayer("outline-hit")) map.setFilter("outline-hit", ["==", ["get", "id"], city]);
   if (map.getLayer("city-underlay")) map.setFilter("city-underlay", ["==", ["get", "id"], city]);
@@ -358,7 +356,7 @@ function setLayerVisibility() {
     lgas: ["lgas-line", "lgas-hit"],
     places: ["places"],
     centres: ["centres", "centre-label"],
-    outline: ["outline-halo", "outline", "outline-hit", "city-underlay"],
+    outline: ["outline", "outline-hit", "city-underlay"],
   };
   Object.entries(mapLayers).forEach(([key, ids]) => {
     const on = els.layers[key]?.checked;
@@ -670,14 +668,17 @@ function addThematic(data) {
     }
   };
 
-  // Opaque city underlay — residual edge gaps show plate cream, never white basemap.
+  // Drop legacy fat outline halo if an older style left it in the map.
+  if (map.getLayer("outline-halo")) map.removeLayer("outline-halo");
+
+  // Soft underlay seals edge gaps without a bold cream slab on dark basemaps.
   add({
     id: "city-underlay",
     type: "fill",
     source: "cities",
     paint: {
       "fill-color": "#ece8de",
-      "fill-opacity": 1,
+      "fill-opacity": 0.42,
       "fill-antialias": false,
     },
   });
@@ -726,7 +727,7 @@ function addThematic(data) {
       "line-opacity": 0.42,
     },
   });
-  // Cream casing + green core (no fat dark halo) — same family as the plates.
+  // Cream casing under a thicker green core — green reads first, casing only for contrast.
   const ringLineLayout = { "line-join": "round", "line-cap": "round" };
   add({
     id: "rings-casing",
@@ -735,7 +736,7 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_CASING,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5.5, 12, 7.5],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 8, 12, 11],
       "line-opacity": 0.95,
     },
   });
@@ -746,9 +747,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_CASING,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5, 12, 7],
-      "line-opacity": 0.92,
-      "line-dasharray": [2.2, 1.4],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 7.5, 12, 10],
+      "line-opacity": 0.95,
     },
   });
   add({
@@ -758,9 +758,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_CASING,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4.5, 12, 6.5],
-      "line-opacity": 0.9,
-      "line-dasharray": [0.9, 1.5],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 7, 12, 9.5],
+      "line-opacity": 0.95,
     },
   });
   add({
@@ -770,7 +769,7 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.central,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.2, 12, 4.2],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4.5, 12, 6],
       "line-opacity": 1,
     },
   });
@@ -781,8 +780,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.intermediate,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.8, 12, 3.6],
-      "line-dasharray": [2.2, 1.4],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4, 12, 5.5],
+      "line-dasharray": [2.2, 1.1],
       "line-opacity": 1,
     },
   });
@@ -793,24 +792,25 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.distant,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.4, 12, 3.2],
-      "line-dasharray": [0.9, 1.5],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.6, 12, 5],
+      "line-dasharray": [1.0, 1.1],
       "line-opacity": 1,
     },
   });
-  // One curved label per ring, following the densified arc.
+  // Curved labels follow densified arcs (line placement, not flat point labels).
   add({
     id: "ring-labels",
     type: "symbol",
     source: "rings",
     layout: {
-      "symbol-placement": "line-center",
+      "symbol-placement": "line",
+      "symbol-spacing": 1600,
       "text-field": ["get", "label"],
-      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 12, 11, 14, 13, 16],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 13, 11, 15.5, 13, 17],
       "text-font": FONT_BOLD,
-      "text-max-angle": 50,
+      "text-max-angle": 28,
       "text-padding": 2,
-      "text-letter-spacing": 0.03,
+      "text-letter-spacing": 0.04,
       "text-keep-upright": true,
       "text-rotation-alignment": "map",
       "text-pitch-alignment": "viewport",
@@ -823,16 +823,16 @@ function addThematic(data) {
         "match",
         ["get", "zone"],
         "central",
-        "#9fdfb0",
+        ZONE_GREENS.central,
         "intermediate",
-        "#b7e4c0",
-        "#d0edda",
+        ZONE_GREENS.intermediate,
+        ZONE_GREENS.distant,
       ],
-      "text-halo-color": "#0c100e",
-      "text-halo-width": 2.4,
-      "text-halo-blur": 0,
+      "text-halo-color": RING_CASING,
+      "text-halo-width": 3.6,
+      "text-halo-blur": 0.1,
     },
-    minzoom: 7.5,
+    minzoom: 7,
   });
   add({
     id: "outline-hit",
@@ -840,17 +840,7 @@ function addThematic(data) {
     source: "cities",
     paint: { "fill-color": "#000", "fill-opacity": 0 },
   });
-  add({
-    id: "outline-halo",
-    type: "line",
-    source: "cities",
-    layout: { "line-join": "round", "line-cap": "round" },
-    paint: {
-      "line-color": EDGE_HALO,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4.2, 11, 5.4, 13, 6.2],
-      "line-opacity": 0.85,
-    },
-  });
+  // Soft study outline — no heavy black halo.
   add({
     id: "outline",
     type: "line",
@@ -858,8 +848,8 @@ function addThematic(data) {
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
       "line-color": EDGE,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.4, 11, 3.2, 13, 3.8],
-      "line-opacity": 0.95,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.55, 11, 0.8, 13, 1.0],
+      "line-opacity": 0.32,
     },
   });
   add({
@@ -1125,7 +1115,7 @@ function popupFromFeature(f, lgaProps) {
   if (id.startsWith("rings") && id !== "ring-labels") return ringPopupHtml(p, lgaProps);
   if (id === "zones-fill") return zonePopupHtml(p, lgaProps);
   if (id === "lgas-hit") return lgaPopupHtml(p);
-  if (id === "outline" || id === "outline-hit" || id === "outline-halo") {
+  if (id === "outline" || id === "outline-hit") {
     const c = meta.cities[p.id];
     return c ? cityPopupHtml(p.id, c) : null;
   }
@@ -1144,7 +1134,6 @@ function bindPopup() {
     "zones-fill",
     "lgas-hit",
     "outline",
-    "outline-halo",
   ];
   const priority = [
     "centres",
@@ -1157,7 +1146,6 @@ function bindPopup() {
     "zones-fill",
     "lgas-hit",
     "outline",
-    "outline-halo",
   ];
 
   hitLayers.forEach((id) => {
