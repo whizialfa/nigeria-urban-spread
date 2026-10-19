@@ -1,7 +1,7 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "24";
+const ASSET = "25";
 const CREDIT = "© OpenStreetMap · Esri · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
@@ -182,7 +182,7 @@ let city = ["lagos", "kano", "ibadan", "kaduna", "onitsha"].includes(params.get(
   : "lagos";
 let basemap = ["gray", "osm", "dark", "streets", "color", "imagery"].includes(params.get("bm"))
   ? params.get("bm")
-  : "dark";
+  : "gray";
 let storyMode = params.get("story") === "1";
 let meta = null;
 let searchIndex = [];
@@ -267,7 +267,7 @@ els.fab.addEventListener("click", () => setPanel(true));
 function writeUrl() {
   const q = new URLSearchParams();
   if (city !== "lagos") q.set("city", city);
-  if (basemap !== "dark") q.set("bm", basemap);
+  if (basemap !== "gray") q.set("bm", basemap);
   if (storyMode) q.set("story", "1");
   if (document.documentElement.classList.contains("theme-dark")) q.set("theme", "dark");
   const qs = q.toString();
@@ -465,6 +465,28 @@ function densifyRings(fc) {
   };
 }
 
+/** NE arc slice so ring labels visibly bend instead of sitting on a flat east–west chord. */
+function ringLabelArcs(fc) {
+  return {
+    type: "FeatureCollection",
+    features: (fc?.features || []).flatMap((f) => {
+      if (f.geometry?.type !== "LineString") return [];
+      const coords = densifyRingCoords(f.geometry.coordinates, 0.00025);
+      if (coords.length < 8) return [];
+      const n = coords.length - 1; // closed ring
+      const start = Math.floor(n * 0.08);
+      const end = Math.max(start + 12, Math.floor(n * 0.28));
+      return [
+        {
+          type: "Feature",
+          properties: { ...f.properties },
+          geometry: { type: "LineString", coordinates: coords.slice(start, end) },
+        },
+      ];
+    }),
+  };
+}
+
 function lgaPopupHtml(p) {
   const c = meta.cities[p.city] || {};
   const cityName = c.name || p.city;
@@ -634,7 +656,7 @@ function addThematic(data) {
   };
   ensure("zones", data.zones);
   ensure("rings", data.rings);
-  ensure("ring-label-pts", data.ringLabels || { type: "FeatureCollection", features: [] });
+  ensure("ring-label-arcs", data.ringLabelArcs || { type: "FeatureCollection", features: [] });
   ensure("lgas", data.lgas);
   ensure("lga-boundaries", data.lgaBoundaries || { type: "FeatureCollection", features: [] });
   ensure("lga-label-pts", data.lgaLabelPts || { type: "FeatureCollection", features: [] });
@@ -727,7 +749,7 @@ function addThematic(data) {
       "line-opacity": 0.42,
     },
   });
-  // Cream casing under a thicker green core — green reads first, casing only for contrast.
+  // Cream casing under a thick green core so buffers stay readable on red change.
   const ringLineLayout = { "line-join": "round", "line-cap": "round" };
   add({
     id: "rings-casing",
@@ -736,8 +758,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_CASING,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 8, 12, 11],
-      "line-opacity": 0.95,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 10, 12, 14],
+      "line-opacity": 1,
     },
   });
   add({
@@ -747,8 +769,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_CASING,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 7.5, 12, 10],
-      "line-opacity": 0.95,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 9.5, 12, 13],
+      "line-opacity": 1,
     },
   });
   add({
@@ -758,8 +780,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_CASING,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 7, 12, 9.5],
-      "line-opacity": 0.95,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 9, 12, 12.5],
+      "line-opacity": 1,
     },
   });
   add({
@@ -769,7 +791,7 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.central,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4.5, 12, 6],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5.5, 12, 7.5],
       "line-opacity": 1,
     },
   });
@@ -780,8 +802,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.intermediate,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4, 12, 5.5],
-      "line-dasharray": [2.2, 1.1],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5, 12, 7],
+      "line-dasharray": [2.0, 0.9],
       "line-opacity": 1,
     },
   });
@@ -792,25 +814,24 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.distant,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.6, 12, 5],
-      "line-dasharray": [1.0, 1.1],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4.5, 12, 6.5],
+      "line-dasharray": [0.9, 0.9],
       "line-opacity": 1,
     },
   });
-  // Curved labels follow densified arcs (line placement, not flat point labels).
+  // Labels on NE arc slices so glyphs clearly curve with the ring.
   add({
     id: "ring-labels",
     type: "symbol",
-    source: "rings",
+    source: "ring-label-arcs",
     layout: {
-      "symbol-placement": "line",
-      "symbol-spacing": 1600,
+      "symbol-placement": "line-center",
       "text-field": ["get", "label"],
-      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 13, 11, 15.5, 13, 17],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 8, 13, 11, 15.5, 13, 17.5],
       "text-font": FONT_BOLD,
-      "text-max-angle": 28,
-      "text-padding": 2,
-      "text-letter-spacing": 0.04,
+      "text-max-angle": 40,
+      "text-padding": 1,
+      "text-letter-spacing": 0.05,
       "text-keep-upright": true,
       "text-rotation-alignment": "map",
       "text-pitch-alignment": "viewport",
@@ -829,7 +850,7 @@ function addThematic(data) {
         ZONE_GREENS.distant,
       ],
       "text-halo-color": RING_CASING,
-      "text-halo-width": 3.6,
+      "text-halo-width": 4,
       "text-halo-blur": 0.1,
     },
     minzoom: 7,
@@ -840,7 +861,7 @@ function addThematic(data) {
     source: "cities",
     paint: { "fill-color": "#000", "fill-opacity": 0 },
   });
-  // Soft study outline — no heavy black halo.
+  // Soft study outline — thin and low-contrast.
   add({
     id: "outline",
     type: "line",
@@ -848,8 +869,8 @@ function addThematic(data) {
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
       "line-color": EDGE,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.55, 11, 0.8, 13, 1.0],
-      "line-opacity": 0.32,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.45, 11, 0.65, 13, 0.85],
+      "line-opacity": 0.26,
     },
   });
   add({
@@ -940,9 +961,11 @@ async function loadData() {
     ]);
   meta = m;
   searchIndex = search;
+  const denseRings = densifyRings(rings);
   dataCache = {
     zones,
-    rings: densifyRings(rings),
+    rings: denseRings,
+    ringLabelArcs: ringLabelArcs(denseRings),
     ringLabels,
     lgas,
     lgaBoundaries,
