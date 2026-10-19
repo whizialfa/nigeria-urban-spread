@@ -1,12 +1,12 @@
-/* Plate-synergy palette: change-map blues/oranges + zone greens + sand paper */
+/* Dark-first chrome; sand panel is the optional light theme. */
 :root {
   --ink: #1c1916;
-  --panel: #f4efe6;
+  --panel: #ebe4d8;
   --panel-edge: rgba(70, 52, 40, 0.28);
   --text: #1e1a16;
   --muted: #5c534a;
-  --accent: #d7301f;
-  --accent-soft: #fc8d59;
+  --accent: #b91c1c;
+  --accent-soft: #e07a4b;
   --accent-blue: #2166ac;
   --zone: #005a32;
   --serif: "Fraunces", Georgia, serif;
@@ -15,15 +15,15 @@
 }
 
 html.theme-dark {
-  --ink: #14110e;
-  --panel: #1c1814;
-  --panel-edge: rgba(252, 141, 89, 0.35);
-  --text: #efe8dc;
-  --muted: #a89a88;
-  --accent: #fc8d59;
-  --accent-soft: #fee8c8;
-  --accent-blue: #92c5de;
-  --zone: #74c476;
+  --ink: #0e0c0a;
+  --panel: #161310;
+  --panel-edge: rgba(168, 154, 136, 0.28);
+  --text: #e4dccf;
+  --muted: #8f8476;
+  --accent: #e07a4b;
+  --accent-soft: #c4a882;
+  --accent-blue: #6a9cc4;
+  --zone: #238b45;
 }
 
 *,
@@ -144,9 +144,9 @@ html.theme-dark .basemap-wrap select,
 html.theme-dark .header-tools button,
 html.theme-dark .paper-link,
 html.theme-dark .layers-fab {
-  background: rgba(28, 24, 20, 0.95);
-  color: #efe8dc;
-  border-color: rgba(252, 141, 89, 0.45);
+  background: rgba(22, 19, 16, 0.95);
+  color: #e4dccf;
+  border-color: rgba(168, 154, 136, 0.4);
 }
 
 .paper-btn {
@@ -164,9 +164,9 @@ html.theme-dark .layers-fab {
 }
 
 html.theme-dark .paper-btn {
-  background: #fc8d59;
-  color: #1a1410 !important;
-  border-color: #fee8c8;
+  background: #c45c2e;
+  color: #f4efe6 !important;
+  border-color: #a34a24;
 }
 
 .panel-top {

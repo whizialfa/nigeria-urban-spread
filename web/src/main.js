@@ -1,7 +1,7 @@
 import { chapters } from "./story.js";
 
 const maplibregl = window.maplibregl;
-const ASSET = "26";
+const ASSET = "27";
 const CREDIT = "© OpenStreetMap · Esri · OpenFreeMap";
 const LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
@@ -9,18 +9,19 @@ const FONT_REG = ["Noto Sans Regular"];
 const FONT_BOLD = ["Noto Sans Bold"];
 const TOUR_KEY = "wch-tour-done";
 
-/* Bright greens + cream casing so rings stay clear on the red change layer. */
+/* Plate symbology from qgis/build_plates.py — calm greens, not neon web greens. */
 const ZONE_GREENS = {
-  central: "#007a33",
-  intermediate: "#1a9f4a",
-  distant: "#3dba5c",
+  central: "#005a32",
+  intermediate: "#238b45",
+  distant: "#74c476",
 };
-const RING_CASING = "#fff8e7";
-const EDGE = "#3a342e";
-const LGA_LINE = "#6e655c";
+const RING_CASING = "#12100e";
+const UNDERLAY = "#1a1814";
+const EDGE = "#e8e2d8";
+const LGA_LINE = "#9a9186";
 const STAR_YELLOW = "#ffd600";
-const PLACE_INK = "#1e1a16";
-const PLACE_HALO = "#fafafa";
+const PLACE_INK = "#efe8dc";
+const PLACE_HALO = "#12100e";
 
 const CHANGE_LEGEND = [
   ["#2166ac", "≤ −25"],
@@ -182,7 +183,7 @@ let city = ["lagos", "kano", "ibadan", "kaduna", "onitsha"].includes(params.get(
   : "lagos";
 let basemap = ["gray", "osm", "dark", "streets", "color", "imagery"].includes(params.get("bm"))
   ? params.get("bm")
-  : "gray";
+  : "dark";
 let storyMode = params.get("story") === "1";
 let meta = null;
 let searchIndex = [];
@@ -194,7 +195,8 @@ els.city.value = city;
 els.basemap.value = basemap;
 els.basemapMobile.value = basemap;
 document.body.classList.add("panel-open");
-if (params.get("theme") === "dark") {
+// Dark chrome is the default; ?theme=light opts into the sand panel look.
+if (params.get("theme") !== "light") {
   document.documentElement.classList.add("theme-dark");
   els.themeToggle.textContent = "Light";
 }
@@ -267,9 +269,9 @@ els.fab.addEventListener("click", () => setPanel(true));
 function writeUrl() {
   const q = new URLSearchParams();
   if (city !== "lagos") q.set("city", city);
-  if (basemap !== "gray") q.set("bm", basemap);
+  if (basemap !== "dark") q.set("bm", basemap);
   if (storyMode) q.set("story", "1");
-  if (document.documentElement.classList.contains("theme-dark")) q.set("theme", "dark");
+  if (!document.documentElement.classList.contains("theme-dark")) q.set("theme", "light");
   const qs = q.toString();
   history.replaceState(null, "", qs ? `?${qs}` : location.pathname);
 }
@@ -694,14 +696,14 @@ function addThematic(data) {
   // Drop legacy fat outline halo if an older style left it in the map.
   if (map.getLayer("outline-halo")) map.removeLayer("outline-halo");
 
-  // Soft underlay seals edge gaps without a bold cream slab on dark basemaps.
+  // Dark underlay seals edge gaps without a bright cream slab over the city.
   add({
     id: "city-underlay",
     type: "fill",
     source: "cities",
     paint: {
-      "fill-color": "#ece8de",
-      "fill-opacity": 0.42,
+      "fill-color": UNDERLAY,
+      "fill-opacity": 0.88,
       "fill-antialias": false,
     },
   });
@@ -750,7 +752,7 @@ function addThematic(data) {
       "line-opacity": 0.42,
     },
   });
-  // Cream casing under a thick green core so buffers stay readable on red change.
+  // Dark casing + plate greens — readable without a bright cream tube.
   const ringLineLayout = { "line-join": "round", "line-cap": "round" };
   add({
     id: "rings-casing",
@@ -759,8 +761,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_CASING,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 10, 12, 14],
-      "line-opacity": 1,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5.5, 12, 7.5],
+      "line-opacity": 0.95,
     },
   });
   add({
@@ -770,8 +772,9 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_CASING,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 9.5, 12, 13],
-      "line-opacity": 1,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5, 12, 7],
+      "line-opacity": 0.92,
+      "line-dasharray": [2.2, 1.4],
     },
   });
   add({
@@ -781,8 +784,9 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": RING_CASING,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 9, 12, 12.5],
-      "line-opacity": 1,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4.5, 12, 6.5],
+      "line-opacity": 0.9,
+      "line-dasharray": [0.9, 1.5],
     },
   });
   add({
@@ -792,7 +796,7 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.central,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5.5, 12, 7.5],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.2, 12, 4.2],
       "line-opacity": 1,
     },
   });
@@ -803,8 +807,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.intermediate,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5, 12, 7],
-      "line-dasharray": [2.0, 0.9],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.8, 12, 3.6],
+      "line-dasharray": [2.2, 1.4],
       "line-opacity": 1,
     },
   });
@@ -815,8 +819,8 @@ function addThematic(data) {
     layout: ringLineLayout,
     paint: {
       "line-color": ZONE_GREENS.distant,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 4.5, 12, 6.5],
-      "line-dasharray": [0.9, 0.9],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.4, 12, 3.2],
+      "line-dasharray": [0.9, 1.5],
       "line-opacity": 1,
     },
   });
@@ -846,14 +850,14 @@ function addThematic(data) {
         "match",
         ["get", "zone"],
         "central",
-        ZONE_GREENS.central,
+        "#a3d9b1",
         "intermediate",
-        ZONE_GREENS.intermediate,
-        ZONE_GREENS.distant,
+        "#b7e4c0",
+        "#c7e9c0",
       ],
       "text-halo-color": RING_CASING,
-      "text-halo-width": 4.2,
-      "text-halo-blur": 0.1,
+      "text-halo-width": 2.4,
+      "text-halo-blur": 0,
     },
     minzoom: 7,
   });
@@ -863,7 +867,7 @@ function addThematic(data) {
     source: "cities",
     paint: { "fill-color": "#000", "fill-opacity": 0 },
   });
-  // Soft study outline — thin and low-contrast.
+  // Study outline — readable on dark tiles without dominating.
   add({
     id: "outline",
     type: "line",
@@ -871,8 +875,8 @@ function addThematic(data) {
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
       "line-color": EDGE,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.45, 11, 0.65, 13, 0.85],
-      "line-opacity": 0.26,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.0, 11, 2.6, 13, 3.1],
+      "line-opacity": 0.88,
     },
   });
   add({
